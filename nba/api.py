@@ -52,7 +52,11 @@ async def get_teams(session, season):
     log.debug("querying %s teams info from %s%s" % (season, BASE_URL, url))
     async with session.get(url) as rsp:
         data = await rsp.json()
-        return data["league"]["standard"]
+        # filter out non-NBA teams
+        teams = [
+            team for team in data["league"]["standard"]
+            if team["isNBAFranchise"]]
+        return teams
 
 
 async def get_players(session, season):
