@@ -16,6 +16,26 @@
 import argparse
 
 
+def add_subparser(subparsers, command, description=""):
+    """
+    Adds a subparser to the subparsers object and automatically assigns common
+    arguments, including -d/--debug.
+
+    Arguments:
+        subparsers  : ArgumentParser subparsers object
+        command     : Subparser sub-command
+        description : Subparser description
+
+    Returns:
+        the subparser object
+    """
+    subparser = subparsers.add_parser(command, description=description)
+    subparser.add_argument(
+        "-d", "--debug", action="store_true",
+        help="Enable debug output.")
+    return subparser
+
+
 def parse_args(args):
     """
     Parses command-line arguments
@@ -30,8 +50,8 @@ def parse_args(args):
         description="Queries useful NBA statistics.")
     subparsers = parser.add_subparsers(help="Sub-command")
 
-    report_subparser = subparsers.add_parser(
-        "report",
+    report_subparser = add_subparser(
+        subparsers, "report",
         description="Produce a report for the given player, including basic "
         "player info, season averages, and game log.")
     report_subparser.add_argument(
