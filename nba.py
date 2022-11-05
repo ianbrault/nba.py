@@ -67,6 +67,26 @@ async def get_players_info(session):
     return info
 
 
+async def player_report(args, session):
+    # filter player info for the given player
+    log.debug("filtering for player with name(s): %s" % ", ".join(args.name))
+    matches = state.filter_players(args.name)
+    if len(matches) > 1:
+        log.error(
+            "ERROR: multiple player matches for name \"%s\""
+            % " ".join(args.name))
+        match_names = [
+            "%s %s" % (p["firstName"], p["lastName"]) for p in matches]
+        log.info("select one of the following:\n%s" % "\n".join(match_names))
+        sys.exit(1)
+
+    player_info = matches[0]
+    # print player name/position/team info
+    full_name = "%s %s" % (player_info["firstName"], player_info["lastName"])
+    team_tricode = state.team_id_to_tricode(player_info["teamId"])
+    log.info("%s - %s (%s)" % (full_name, player_info["pos"], team_tricode))
+
+
 async def run(args, session):
     # get current NBA info and add to global state
     state.set_nba_info(await api.get_nba_info(session))
@@ -74,6 +94,9 @@ async def run(args, session):
     state.set_teams(await get_teams_info(session))
     # get NBA players info and add to global state
     state.set_players(await get_players_info(session))
+
+    if args.command == "report":
+        await player_report(args, session)
 
 
 async def main(args):

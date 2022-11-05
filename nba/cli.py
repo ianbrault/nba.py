@@ -48,7 +48,7 @@ def parse_args(args):
     """
     parser = argparse.ArgumentParser(
         description="Queries useful NBA statistics.")
-    subparsers = parser.add_subparsers(help="Sub-command")
+    subparsers = parser.add_subparsers(dest="command", help="Sub-command")
 
     report_subparser = add_subparser(
         subparsers, "report",
