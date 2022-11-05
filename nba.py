@@ -31,7 +31,25 @@ import sys
 LOCAL_STORAGE = pathlib.Path(os.environ["HOME"]) / ".nba"
 
 
-async def get_player_info(session):
+async def get_teams_info(session):
+    info = []
+    season = state.get_current_season()
+    teams_file = LOCAL_STORAGE / ("teams_%s.json" % season)
+    # if the players info is already stored locally, load it
+    if teams_file.exists():
+        log.debug("loading %s teams info from %s" % (season, teams_file))
+        with teams_file.open() as f:
+            info = json.loads(f.read())
+    # otherwise, query it from the server and store to the file
+    else:
+        info = await api.get_teams(session, season)
+        log.debug("storing %s players info to %s" % (season, teams_file))
+        with teams_file.open("w") as f:
+            f.write(json.dumps(info))
+    return info
+
+
+async def get_players_info(session):
     info = []
     season = state.get_current_season()
     players_file = LOCAL_STORAGE / ("players_%s.json" % season)
@@ -52,8 +70,10 @@ async def get_player_info(session):
 async def run(args, session):
     # get current NBA info and add to global state
     state.set_nba_info(await api.get_nba_info(session))
-    # get NBA player info and add to global state
-    state.set_players(await get_player_info(session))
+    # get NBA teams info and add to global state
+    state.set_teams(await get_teams_info(session))
+    # get NBA players info and add to global state
+    state.set_players(await get_players_info(session))
 
 
 async def main(args):

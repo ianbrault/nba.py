@@ -37,6 +37,24 @@ async def get_nba_info(session):
         return data
 
 
+async def get_teams(session, season):
+    """
+    Queries for info for all NBA teams for the given season.
+
+    Arguments:
+        session : aiohttp.ClientSession object
+        season  : NBA season year
+
+    Returns:
+        team info as a JSON object
+    """
+    url = "/prod/v2/%s/teams.json" % season
+    log.debug("querying %s teams info from %s%s" % (season, BASE_URL, url))
+    async with session.get(url) as rsp:
+        data = await rsp.json()
+        return data["league"]["standard"]
+
+
 async def get_players(session, season):
     """
     Queries for info for all NBA players for the given season.
