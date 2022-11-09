@@ -17,11 +17,11 @@ from nba import api
 from nba import cli
 from nba import log
 from nba import state
+from nba import utils
 
 import aiohttp
 
 import asyncio
-import json
 import logging
 import os
 import pathlib
@@ -29,42 +29,6 @@ import sys
 
 # storage directory on the local filesystem
 LOCAL_STORAGE = pathlib.Path(os.environ["HOME"]) / ".nba"
-
-
-async def get_teams_info(session):
-    info = []
-    season = state.get_current_season()
-    teams_file = LOCAL_STORAGE / ("teams_%s.json" % season)
-    # if the players info is already stored locally, load it
-    if teams_file.exists():
-        log.debug("loading %s teams info from %s" % (season, teams_file))
-        with teams_file.open() as f:
-            info = json.loads(f.read())
-    # otherwise, query it from the server and store to the file
-    else:
-        info = await api.get_teams(session, season)
-        log.debug("storing %s players info to %s" % (season, teams_file))
-        with teams_file.open("w") as f:
-            f.write(json.dumps(info))
-    return info
-
-
-async def get_players_info(session):
-    info = []
-    season = state.get_current_season()
-    players_file = LOCAL_STORAGE / ("players_%s.json" % season)
-    # if the players info is already stored locally, load it
-    if players_file.exists():
-        log.debug("loading %s players info from %s" % (season, players_file))
-        with players_file.open() as f:
-            info = json.loads(f.read())
-    # otherwise, query it from the server and store to the file
-    else:
-        info = await api.get_players(session, season)
-        log.debug("storing %s players info to %s" % (season, players_file))
-        with players_file.open("w") as f:
-            f.write(json.dumps(info))
-    return info
 
 
 async def player_report(args, session):
@@ -75,25 +39,19 @@ async def player_report(args, session):
         log.error(
             "ERROR: multiple player matches for name \"%s\""
             % " ".join(args.name))
-        match_names = [
-            "%s %s" % (p["firstName"], p["lastName"]) for p in matches]
+        match_names = [player.full_name for player in matches]
         log.info("select one of the following:\n%s" % "\n".join(match_names))
         sys.exit(1)
 
-    player_info = matches[0]
+    player = matches[0]
     # print player name/position/team info
-    full_name = "%s %s" % (player_info["firstName"], player_info["lastName"])
-    team_tricode = state.team_id_to_tricode(player_info["teamId"])
-    log.info("%s - %s (%s)" % (full_name, player_info["pos"], team_tricode))
+    log.info("%s - %s (%s)" % (player.full_name, player.position, player.team))
 
 
 async def run(args, session):
-    # get current NBA info and add to global state
-    state.set_nba_info(await api.get_nba_info(session))
-    # get NBA teams info and add to global state
-    state.set_teams(await get_teams_info(session))
+    season = utils.get_current_season()
     # get NBA players info and add to global state
-    state.set_players(await get_players_info(session))
+    state.set_players(await api.get_players(session, season))
 
     if args.command == "report":
         await player_report(args, session)
@@ -105,7 +63,7 @@ async def main(args):
     # open the HTTP session and catch exceptions at the top level
     try:
         async with aiohttp.ClientSession(
-            base_url=api.BASE_URL, raise_for_status=True,
+            base_url=api.BASE_URL, headers=api.HEADERS, raise_for_status=True,
         ) as session:
             await run(args, session)
     except aiohttp.ClientResponseError as ex:

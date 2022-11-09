@@ -14,49 +14,15 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from . import log
+from . import parse
 
-BASE_URL = "http://data.nba.net"
-
-
-async def get_nba_info(session):
-    """
-    Queries for current NBA info.
-
-    Arguments:
-        session : aiohttp.ClientSession object
-
-    Returns:
-        info as a JSON object
-    """
-    url = "/10s/prod/v1/today.json"
-    log.debug("querying NBA info from %s%s" % (BASE_URL, url))
-    async with session.get(url) as rsp:
-        data = await rsp.json()
-        # post-process: remove _internal key
-        del data["_internal"]
-        return data
-
-
-async def get_teams(session, season):
-    """
-    Queries for info for all NBA teams for the given season.
-
-    Arguments:
-        session : aiohttp.ClientSession object
-        season  : NBA season year
-
-    Returns:
-        team info as a JSON object
-    """
-    url = "/prod/v2/%s/teams.json" % season
-    log.debug("querying %s teams info from %s%s" % (season, BASE_URL, url))
-    async with session.get(url) as rsp:
-        data = await rsp.json()
-        # filter out non-NBA teams
-        teams = [
-            team for team in data["league"]["standard"]
-            if team["isNBAFranchise"]]
-        return teams
+BASE_URL = "https://www.basketball-reference.com"
+# for some reason Basketball Reference rejects the default aiohttp user-agent
+# but we can work around this by using the requests user-agent instead
+HEADERS = {
+    "Connection": "keep-alive",
+    "User-Agent": "python-requests/2.28.1",
+}
 
 
 async def get_players(session, season):
@@ -70,8 +36,8 @@ async def get_players(session, season):
     Returns:
         player info as a JSON object
     """
-    url = "/prod/v1/%s/players.json" % season
+    url = "/leagues/NBA_%s_per_game.html" % season
     log.debug("querying %s players info from %s%s" % (season, BASE_URL, url))
     async with session.get(url) as rsp:
-        data = await rsp.json()
-        return data["league"]["standard"]
+        data = await rsp.text()
+        return parse.parse_players_stats_page(data)

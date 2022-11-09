@@ -20,33 +20,14 @@ class NBAState:
     """
     Global store for NBA information and statistics.
     """
-    info = {}
     teams = []
     players = []
-
-    def set_nba_info(self, nba_info):
-        self.info = nba_info
 
     def set_teams(self, nba_teams):
         self.teams = nba_teams
 
     def set_players(self, nba_players):
         self.players = nba_players
-
-    def get_current_season(self):
-        # info must be set
-        if not self.info:
-            raise RuntimeError("NBAState.info has not been set")
-        return self.info["seasonScheduleYear"]
-
-    def team_id_to_tricode(self, team_id):
-        # teams must be set
-        if not self.teams:
-            raise RuntimeError("NBAState.teams has not been set")
-        matches = [t for t in self.teams if t["teamId"] == team_id]
-        if not matches:
-            raise RuntimeError("no team matching ID %s" % team_id)
-        return matches[0]["tricode"]
 
     def filter_players(self, names):
         """
@@ -75,4 +56,4 @@ class NBAState:
 
         return [
             p for p in self.players
-            if combinator(p["firstName"] == first, p["lastName"] == last)]
+            if combinator(p.first_name == first, p.last_name == last)]
