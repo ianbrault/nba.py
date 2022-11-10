@@ -51,9 +51,8 @@ def parse_args(args):
     subparsers = parser.add_subparsers(dest="command", help="Sub-command")
 
     report_subparser = add_subparser(
-        subparsers, "report",
-        description="Produce a report for the given player, including basic "
-        "player info, season averages, and game log.")
+        subparsers, "avg",
+        description="Reports season averages for the given player.")
     report_subparser.add_argument(
         "name", nargs="+",
         help="Player name, specify first/last/both as needed")

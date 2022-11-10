@@ -27,13 +27,13 @@ class Player:
         self.player = player
         self.pos = pos
         self.team_id = team_id
-        self.pts_per_game = pts_per_g
-        self.fg_per_game = fg_per_g
-        self.fga_per_game = fga_per_g
-        self.fg3_per_game = fg3_per_g
-        self.fg3a_per_game = fg3a_per_g
-        self.ft_per_game = ft_per_g
-        self.fta_per_game = fta_per_g
+        self.pts_per_g = pts_per_g
+        self.fg_per_g = fg_per_g
+        self.fga_per_g = fga_per_g
+        self.fg3_per_g = fg3_per_g
+        self.fg3a_per_g = fg3a_per_g
+        self.ft_per_g = ft_per_g
+        self.fta_per_g = fta_per_g
 
     def toJSON(self):
         return self.__dict__
@@ -48,12 +48,12 @@ class Player:
 
     @property
     def fg_pct(self):
-        return self.fg_per_game / self.fga_per_game
+        return self.fg_per_g / self.fga_per_g
 
     @property
     def fg3_pct(self):
-        return self.fg3_per_game / self.fg3a_per_game
+        return self.fg3_per_g / self.fg3a_per_g
 
     @property
     def ft_pct(self):
-        return self.ft_per_game / self.fta_per_game
+        return self.ft_per_g / self.fta_per_g

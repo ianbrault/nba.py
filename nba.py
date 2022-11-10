@@ -51,7 +51,7 @@ async def get_players(session):
     return players
 
 
-async def player_report(args, session):
+def player_season_averages(args):
     # filter player info for the given player
     log.debug("filtering for player with name(s): %s" % ", ".join(args.name))
     matches = state.filter_players(args.name)
@@ -65,6 +65,9 @@ async def player_report(args, session):
     player = matches[0]
     # print player name/position/team info
     log.info("%s - %s (%s)" % (player.player, player.pos, player.team_id))
+    log.info(
+        "%.1f pts %.1f FG% (%.1f FGA)"
+        % (player.pts_per_g, player.fg_pct, player.fga_per_g))
 
 
 async def run(args, session):
@@ -72,8 +75,8 @@ async def run(args, session):
     players_info = await get_players(session)
     state.set_players(players_info)
 
-    if args.command == "report":
-        await player_report(args, session)
+    if args.command == "avg":
+        player_season_averages(args)
 
 
 async def main(args):
