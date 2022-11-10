@@ -42,7 +42,7 @@ def parse_players_stats_page(content):
             else:
                 value = col.string
             player_info[key] = value
-        players.append(Player(player_info))
+        players.append(Player(**player_info))
 
     log.debug("parsed info for %u players" % len(players))
     return players

@@ -20,11 +20,7 @@ class NBAState:
     """
     Global store for NBA information and statistics.
     """
-    teams = []
     players = []
-
-    def set_teams(self, nba_teams):
-        self.teams = nba_teams
 
     def set_players(self, nba_players):
         self.players = nba_players

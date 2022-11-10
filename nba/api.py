@@ -37,7 +37,8 @@ async def get_players(session, season):
         player info as a JSON object
     """
     url = "/leagues/NBA_%s_per_game.html" % season
-    log.debug("querying %s players info from %s%s" % (season, BASE_URL, url))
+    log.debug(
+        "querying %s season players info from %s%s" % (season, BASE_URL, url))
     async with session.get(url) as rsp:
         data = await rsp.text()
         return parse.parse_players_stats_page(data)

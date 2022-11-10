@@ -16,6 +16,17 @@
 import datetime
 
 
+def get_date_key():
+    """
+    Gets a unique identifier for the current date in the format YYYYMMDD.
+
+    Returns:
+        the date key as a str
+    """
+    now = datetime.datetime.now()
+    return "%u%02u%02u" % (now.year, now.month, now.day)
+
+
 def get_current_season():
     """
     Gets the year for the current season. For use by Basketball Reference, this

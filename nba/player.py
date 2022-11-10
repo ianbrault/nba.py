@@ -19,25 +19,41 @@ class Player:
     Stores player information and statistics.
     """
 
-    def __init__(self, object):
-        self.full_name = object["player"]
-        self.first_name = self.full_name.split(" ")[0]
-        self.last_name = " ".join(self.full_name.split(" ")[1:])
-        self.position = object["pos"]
-        self.team = object["team_id"]
-        self.pts_per_game = object["pts_per_g"]
-        self.fg_per_game = object["fg_per_g"]
-        self.fga_per_game = object["fga_per_g"]
-        self.fg3_per_game = object["fg3_per_g"]
-        self.fg3a_per_game = object["fg3a_per_g"]
-        self.ft_per_game = object["ft_per_g"]
-        self.fta_per_game = object["fta_per_g"]
+    def __init__(
+        self, player=None, pos=None, team_id=None, pts_per_g=None,
+        fg_per_g=None, fga_per_g=None, fg3_per_g=None, fg3a_per_g=None,
+        ft_per_g=None, fta_per_g=None, **kwargs,
+    ):
+        self.player = player
+        self.pos = pos
+        self.team_id = team_id
+        self.pts_per_game = pts_per_g
+        self.fg_per_game = fg_per_g
+        self.fga_per_game = fga_per_g
+        self.fg3_per_game = fg3_per_g
+        self.fg3a_per_game = fg3a_per_g
+        self.ft_per_game = ft_per_g
+        self.fta_per_game = fta_per_g
 
+    def toJSON(self):
+        return self.__dict__
+
+    @property
+    def first_name(self):
+        return self.player.split(" ")[0]
+
+    @property
+    def last_name(self):
+        return " ".join(self.player.split(" ")[1:])
+
+    @property
     def fg_pct(self):
         return self.fg_per_game / self.fga_per_game
 
+    @property
     def fg3_pct(self):
         return self.fg3_per_game / self.fg3a_per_game
 
+    @property
     def ft_pct(self):
         return self.ft_per_game / self.fta_per_game

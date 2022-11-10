@@ -17,11 +17,14 @@ from nba import api
 from nba import cli
 from nba import log
 from nba import state
+from nba import storage
 from nba import utils
+from nba.player import Player
 
 import aiohttp
 
 import asyncio
+import json
 import logging
 import os
 import pathlib
@@ -31,27 +34,43 @@ import sys
 LOCAL_STORAGE = pathlib.Path(os.environ["HOME"]) / ".nba"
 
 
+async def get_players(session):
+    players = []
+    season = utils.get_current_season()
+    date = utils.get_date_key()
+    local_file = LOCAL_STORAGE / ("players_%s.json" % date)
+    # check if the player info for the current date is already stored locally
+    if local_file.exists():
+        players_json = storage.load_json(local_file)
+        players = [Player(**obj) for obj in players_json]
+    # otherwise, grab via the API and store locally
+    else:
+        players = await api.get_players(session, season)
+        players_json = [p.toJSON() for p in players]
+        storage.store_json(local_file, players_json)
+    return players
+
+
 async def player_report(args, session):
     # filter player info for the given player
     log.debug("filtering for player with name(s): %s" % ", ".join(args.name))
     matches = state.filter_players(args.name)
     if len(matches) > 1:
         log.error(
-            "ERROR: multiple player matches for name \"%s\""
-            % " ".join(args.name))
+            "multiple player matches for name \"%s\"" % " ".join(args.name))
         match_names = [player.full_name for player in matches]
         log.info("select one of the following:\n%s" % "\n".join(match_names))
         sys.exit(1)
 
     player = matches[0]
     # print player name/position/team info
-    log.info("%s - %s (%s)" % (player.full_name, player.position, player.team))
+    log.info("%s - %s (%s)" % (player.player, player.pos, player.team_id))
 
 
 async def run(args, session):
-    season = utils.get_current_season()
     # get NBA players info and add to global state
-    state.set_players(await api.get_players(session, season))
+    players_info = await get_players(session)
+    state.set_players(players_info)
 
     if args.command == "report":
         await player_report(args, session)
@@ -67,7 +86,7 @@ async def main(args):
         ) as session:
             await run(args, session)
     except aiohttp.ClientResponseError as ex:
-        log.error("ERROR: failed to retrieve data from the server: %s" % ex)
+        log.error("failed to retrieve data from the server: %s" % ex)
 
 
 if __name__ == "__main__":
