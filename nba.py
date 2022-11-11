@@ -65,9 +65,18 @@ def player_season_averages(args):
     player = matches[0]
     # print player name/position/team info
     log.info("%s - %s (%s)" % (player.player, player.pos, player.team_id))
+    log.info("%.1f pts" % player.pts_per_g)
     log.info(
-        "%.1f pts %.1f FG% (%.1f FGA)"
-        % (player.pts_per_g, player.fg_pct, player.fga_per_g))
+        "%.3f FG%% (%.1f FG / %.1f FGA)"
+        % (player.fg_pct, player.fg_per_g, player.fga_per_g))
+    log.info(
+        "%.3f 3PT%% (%.1f 3PT / %.1f 3PTA)"
+        % (player.fg3_pct, player.fg3_per_g, player.fg3a_per_g))
+    log.info(
+        "%.3f FT%% (%.1f FT / %.1f FTA)"
+        % (player.ft_pct, player.ft_per_g, player.fta_per_g))
+    log.info("%.1f reb" % player.trb_per_g)
+    log.info("%.1f ast" % player.ast_per_g)
 
 
 async def run(args, session):

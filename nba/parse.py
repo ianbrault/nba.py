@@ -31,6 +31,9 @@ def parse_players_stats_page(content):
     """
     players = []
     soup = bs4.BeautifulSoup(content, "html.parser")
+    # leave the following fields as strings, the remaining fields are assumed
+    # to be floats
+    str_fields = ["player", "pos", "team_id"]
 
     table = soup.find("table", id="per_game_stats")
     for row in table.find_all("tr", class_="full_table"):
@@ -41,6 +44,11 @@ def parse_players_stats_page(content):
                 value = col.a.string
             else:
                 value = col.string
+            if key not in str_fields:
+                if value is None:
+                    value = 0.0
+                else:
+                    value = float(value)
             player_info[key] = value
         players.append(Player(**player_info))
 

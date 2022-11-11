@@ -33,7 +33,8 @@ class LogFormatter(logging.Formatter):
     yellow = "\x1b[33m"
     red = "\x1b[31m"
     reset = "\x1b[0m"
-    fmt = "[%(asctime)s] %(message)s"
+    # fmt = "[%(asctime)s] %(message)s"
+    fmt = "%(message)s"
 
     FORMATS = {
         logging.DEBUG: green + fmt + reset,

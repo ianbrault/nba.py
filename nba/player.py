@@ -20,9 +20,11 @@ class Player:
     """
 
     def __init__(
-        self, player=None, pos=None, team_id=None, pts_per_g=None,
-        fg_per_g=None, fga_per_g=None, fg3_per_g=None, fg3a_per_g=None,
-        ft_per_g=None, fta_per_g=None, **kwargs,
+        self,
+        player=None, pos=None, team_id=None, pts_per_g=None, fg_per_g=None,
+        fga_per_g=None, fg3_per_g=None, fg3a_per_g=None, ft_per_g=None,
+        fta_per_g=None, trb_per_g=None, ast_per_g=None,
+        **kwargs,
     ):
         self.player = player
         self.pos = pos
@@ -34,6 +36,8 @@ class Player:
         self.fg3a_per_g = fg3a_per_g
         self.ft_per_g = ft_per_g
         self.fta_per_g = fta_per_g
+        self.trb_per_g = trb_per_g
+        self.ast_per_g = ast_per_g
 
     def toJSON(self):
         return self.__dict__
