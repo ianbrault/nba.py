@@ -133,17 +133,37 @@ def player_season_averages(args):
 async def player_last_5_games(args, session):
     # filter player info for the given player
     player = find_player_by_name(args.name)
-    # grab the last 5 games for the player
-    last_5_games = state.filter_schedule(player.team_id)[-5:]
+    team_id = player.team_id
+    # grab all played games for the player, we will sub-filter afterwards
+    # this gives ample margin to skip over DNPs
+    player_schedule = state.filter_schedule(team_id)
     # grab info from those 5 games
-    game_info_promises = [get_game(session, g) for g in last_5_games]
+    game_info_promises = [get_game(session, g) for g in player_schedule]
     game_info = await asyncio.gather(*game_info_promises)
 
     # print player name/position/team info
     log.info(player.bio())
     # print player stats for each game
-    for game in game_info:
-        log.info(game)
+    # reverse so the report is newest-to-oldest
+    # track the number of games that have been printed and skip over DNPs
+    ngames = 0
+    for sched, game in reversed(list(zip(player_schedule, game_info))):
+        if ngames == 5:
+            break
+        # print date/location/opponent for game
+        where = "v." if game.is_home_team(player.team_id) else "@ "
+        game_bio = "%s %s %s" % (
+            sched.date_str_brief(), where, game.opponent_id(player.team_id))
+        # get player stats for the game
+        stats = game.get_player_stats(player)
+        if stats is None:
+            # DNP, skip this game
+            continue
+        log.info(
+            "%s: %u pts (%.3f FG%% %u FGA) %u reb %u ast"
+            % (game_bio, stats.pts, stats.fg_pct, stats.fga, stats.trb,
+               stats.ast))
+        ngames += 1
 
 
 async def run(args, session):

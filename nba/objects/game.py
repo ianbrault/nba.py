@@ -47,3 +47,21 @@ class Game:
             away_team=obj["away_team"], away_stats=away_stats,
             home_team=obj["home_team"], home_stats=home_stats,
         )
+
+    def is_home_team(self, team_id):
+        return team_id == self.home_team
+
+    def opponent_id(self, team_id):
+        if self.is_home_team(team_id):
+            return self.away_team
+        else:
+            return self.home_team
+
+    def get_player_stats(self, player):
+        if self.is_home_team(player.team_id):
+            team_stats = self.home_stats
+        else:
+            team_stats = self.away_stats
+        stats = [p for p in team_stats if p.player == player.player]
+        return stats[0] if stats else None
+

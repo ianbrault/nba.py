@@ -53,5 +53,9 @@ class ScheduleGame:
     def date_key(self):
         return self.date_to_datetime().strftime("%Y%m%d")
 
+    def date_str_brief(self):
+        time = self.date_to_datetime()
+        return "%02u/%02u" % (time.month, time.day)
+
     def is_played(self):
         return self.visitor_pts is not None and self.home_pts is not None

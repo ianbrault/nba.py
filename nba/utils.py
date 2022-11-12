@@ -17,7 +17,7 @@ import datetime
 
 TRICODE_TO_FULL_NAME = {
     "ATL": "Atlanta Hawks",
-    "BKN": "Brooklyn Nets",
+    "BRK": "Brooklyn Nets",
     "BOS": "Boston Celtics",
     "CHA": "Charlotte Hornets",
     "CHI": "Chicago Bulls",
