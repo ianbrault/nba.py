@@ -13,6 +13,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+from .. import utils
+
 import datetime
 
 
@@ -24,16 +26,32 @@ class ScheduleGame:
     def __init__(
         self,
         date_game=None, game_start_time=None, visitor_team_name=None,
-        home_team_name=None,
+        visitor_pts=None, home_team_name=None, home_pts=None,
         **kwargs,
     ):
         self.date_game = date_game
         self.game_start_time = game_start_time
         self.visitor_team_name = visitor_team_name
+        self.visitor_pts = visitor_pts
         self.home_team_name = home_team_name
+        self.home_pts = home_pts
 
     def toJSON(self):
         return self.__dict__
 
+    @property
+    def away_team_id(self):
+        return utils.FULL_NAME_TO_TRICODE[self.visitor_team_name]
+
+    @property
+    def home_team_id(self):
+        return utils.FULL_NAME_TO_TRICODE[self.home_team_name]
+
     def date_to_datetime(self):
         return datetime.datetime.strptime(self.date_game, "%a, %b %d, %Y")
+
+    def date_key(self):
+        return self.date_to_datetime().strftime("%Y%m%d")
+
+    def is_played(self):
+        return self.visitor_pts is not None and self.home_pts is not None

@@ -13,6 +13,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+from . import utils
+
 import operator
 
 
@@ -57,3 +59,27 @@ class NBAState:
         return [
             p for p in self.players
             if combinator(p.first_name == first, p.last_name == last)]
+
+    def filter_schedule(self, team_id, played=True):
+        """
+        Filters the schedule for games based on the given team tricode.
+
+        Arguments:
+            team_id : Team tricode
+            played  : Only include games that have already been played
+
+        Returns:
+            a list of matching game objects
+        """
+        # schedule must be set
+        if not self.schedule:
+            raise RuntimeError("NBAState.schedule has not been set")
+
+        team = utils.TRICODE_TO_FULL_NAME[team_id]
+        games = [
+            g for g in self.schedule
+            if g.home_team_name == team or g.visitor_team_name == team]
+        # further filter by games that have already been played, if requested
+        if played:
+            games = [g for g in games if g.is_played()]
+        return games

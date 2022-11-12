@@ -50,10 +50,18 @@ def parse_args(args):
         description="Queries useful NBA statistics.")
     subparsers = parser.add_subparsers(dest="command", help="Sub-command")
 
-    report_subparser = add_subparser(
+    averages_subparser = add_subparser(
         subparsers, "avg",
         description="Reports season averages for the given player.")
-    report_subparser.add_argument(
+    averages_subparser.add_argument(
+        "name", nargs="+",
+        help="Player name, specify first/last/both as needed")
+
+    last_5_subparser = add_subparser(
+        subparsers, "L5",
+        description="Reports stats from the last 5 games for the given "
+        "player.")
+    last_5_subparser.add_argument(
         "name", nargs="+",
         help="Player name, specify first/last/both as needed")
 

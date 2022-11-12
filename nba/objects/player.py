@@ -21,12 +21,18 @@ class Player:
 
     def __init__(
         self,
-        player=None, pos=None, team_id=None, pts_per_g=None, fg_per_g=None,
-        fga_per_g=None, fg3_per_g=None, fg3a_per_g=None, ft_per_g=None,
-        fta_per_g=None, trb_per_g=None, ast_per_g=None,
+        player=None,
+        # the following are set for season averages
+        pos=None, team_id=None, pts_per_g=None, fg_per_g=None, fga_per_g=None,
+        fg3_per_g=None, fg3a_per_g=None, ft_per_g=None, fta_per_g=None,
+        trb_per_g=None, ast_per_g=None,
+        # the following are set for per-game statistics
+        mp=None, pts=None, fg=None, fga=None, fg3=None, fg3a=None, ft=None,
+        fta=None, trb=None, ast=None,
         **kwargs,
     ):
         self.player = player
+        # season averages
         self.pos = pos
         self.team_id = team_id
         self.pts_per_g = pts_per_g
@@ -38,6 +44,17 @@ class Player:
         self.fta_per_g = fta_per_g
         self.trb_per_g = trb_per_g
         self.ast_per_g = ast_per_g
+        # per-game statistics
+        self.mp = mp
+        self.pts = pts
+        self.fg = fg
+        self.fga = fga
+        self.fg3 = fg3
+        self.fg3a = fg3a
+        self.ft = ft
+        self.fta = fta
+        self.trb = trb
+        self.ast = ast
 
     def toJSON(self):
         return self.__dict__
@@ -52,14 +69,26 @@ class Player:
 
     @property
     def fg_pct(self):
+        return self.fg / self.fga
+
+    @property
+    def fg_pct_per_g(self):
         return self.fg_per_g / self.fga_per_g
 
     @property
     def fg3_pct(self):
+        return self.fg3 / self.fg3a
+
+    @property
+    def fg3_pct_per_g(self):
         return self.fg3_per_g / self.fg3a_per_g
 
     @property
     def ft_pct(self):
+        return self.ft / self.fta
+
+    @property
+    def ft_pct_per_g(self):
         return self.ft_per_g / self.fta_per_g
 
     def bio(self):

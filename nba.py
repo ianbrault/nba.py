@@ -20,7 +20,9 @@ from nba import state
 from nba import storage
 from nba import utils
 
-from nba import Player, ScheduleGame
+from nba import Game
+from nba import Player
+from nba import ScheduleGame
 
 import aiohttp
 
@@ -76,32 +78,72 @@ async def get_schedule(session):
     return schedule
 
 
-def player_season_averages(args):
+async def get_game(session, sched_game):
+    game = None
+    fname = "game_%s_%s_%s.json" % (
+        sched_game.date_key(), sched_game.away_team_id,
+        sched_game.home_team_id)
+    local_file = LOCAL_STORAGE / fname
+    # check if the game is already stored locally
+    if local_file.exists():
+        game_json = storage.load_json(local_file)
+        game = Game.fromJSON(game_json)
+    # otherwise, grab via the API and store locally
+    else:
+        game = await api.get_game(session, sched_game)
+        storage.store_json(local_file, game.toJSON())
+    return game
+
+
+def find_player_by_name(names):
     # filter player info for the given player
-    log.debug("filtering for player with name(s): %s" % ", ".join(args.name))
-    matches = state.filter_players(args.name)
+    log.debug("filtering for player with name(s): %s" % ", ".join(names))
+    matches = state.filter_players(names)
     if len(matches) > 1:
         log.error(
-            "multiple player matches for name \"%s\"" % " ".join(args.name))
+            "multiple player matches for name \"%s\"" % " ".join(names))
         match_names = [player.full_name for player in matches]
         log.info("select one of the following:\n%s" % "\n".join(match_names))
         sys.exit(1)
 
-    player = matches[0]
+    return matches[0]
+
+
+def player_season_averages(args):
+    # filter player info for the given player
+    player = find_player_by_name(args.name)
+
     # print player name/position/team info
     log.info(player.bio())
+    # print player season averages
     log.info("%.1f pts" % player.pts_per_g)
     log.info(
         "%.3f FG%% (%.1f FG / %.1f FGA)"
-        % (player.fg_pct, player.fg_per_g, player.fga_per_g))
+        % (player.fg_pct_per_g, player.fg_per_g, player.fga_per_g))
     log.info(
         "%.3f 3PT%% (%.1f 3PT / %.1f 3PTA)"
-        % (player.fg3_pct, player.fg3_per_g, player.fg3a_per_g))
+        % (player.fg3_pct_per_g, player.fg3_per_g, player.fg3a_per_g))
     log.info(
         "%.3f FT%% (%.1f FT / %.1f FTA)"
-        % (player.ft_pct, player.ft_per_g, player.fta_per_g))
+        % (player.ft_pct_per_g, player.ft_per_g, player.fta_per_g))
     log.info("%.1f reb" % player.trb_per_g)
     log.info("%.1f ast" % player.ast_per_g)
+
+
+async def player_last_5_games(args, session):
+    # filter player info for the given player
+    player = find_player_by_name(args.name)
+    # grab the last 5 games for the player
+    last_5_games = state.filter_schedule(player.team_id)[-5:]
+    # grab info from those 5 games
+    game_info_promises = [get_game(session, g) for g in last_5_games]
+    game_info = await asyncio.gather(*game_info_promises)
+
+    # print player name/position/team info
+    log.info(player.bio())
+    # print player stats for each game
+    for game in game_info:
+        log.info(game)
 
 
 async def run(args, session):
@@ -114,6 +156,8 @@ async def run(args, session):
 
     if args.command == "avg":
         player_season_averages(args)
+    if args.command == "L5":
+        await player_last_5_games(args, session)
 
 
 async def main(args):

@@ -14,6 +14,10 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from . import log
+from . import state
+from . import utils
+
+from . import Game
 from . import Player
 from . import ScheduleGame
 
@@ -48,10 +52,7 @@ def parse_players_stats_page(content):
             else:
                 value = col.string
             if key not in str_fields:
-                if value is None:
-                    value = 0.0
-                else:
-                    value = float(value)
+                value = 0.0 if value is None else float(value)
             player_info[key] = value
         players.append(Player(**player_info))
 
@@ -67,12 +68,14 @@ def parse_schedule_page(content):
         content : HTML content string
 
     Returns:
-        a list of parsed Game objects
+        a list of parsed ScheduleGame objects
     """
     games = []
     soup = bs4.BeautifulSoup(content, "html.parser")
     # the following fields have values wrapped inside links
     link_fields = ["date_game", "visitor_team_name", "home_team_name"]
+    # the following fields should be converted to ints
+    int_fields = ["visitor_pts", "home_pts"]
 
     table = soup.find("table", id="schedule")
     for row in table.find_all("tr"):
@@ -81,19 +84,80 @@ def parse_schedule_page(content):
             continue
         game_info = {}
         # date is in a th, remaining data is in td's
-        try:
-            game_info[row.th["data-stat"]] = row.th.a.string
-        except AttributeError as ex:
-            print(row)
-            raise ex
+        game_info[row.th["data-stat"]] = row.th.a.string
         for col in cols:
             key = col["data-stat"]
             if key in link_fields:
                 value = col.a.string
             else:
                 value = col.string
+            if key in int_fields:
+                value = int(value) if value is not None else value
             game_info[key] = value
         games.append(ScheduleGame(**game_info))
 
     log.debug("parsed info for %u games" % len(games))
     return games
+
+
+def _parse_game_page_for_team(soup, team):
+    stats = []
+    # leave the following fields as strings
+    str_fields = ["mp"]
+    # convert the following fields to floats, remaining fields are ints
+    float_fields = ["fg_pct", "fg3_pct", "ft_pct"]
+
+    table = soup.find("table", id="box-%s-game-basic" % team)
+    for row in table.find_all("tr"):
+        cols = row.find_all("td")
+        if not cols or ("class" in row and row["class"] == "thead"):
+            continue
+        # grab the player for the row
+        player_link = row.th.a
+        # no link for header rows
+        if player_link is None:
+            continue
+        player_stats = {"player": player_link.string}
+        # if there is only a single data column, then the player did not play
+        if len(cols) == 1:
+            stats.append(Player(**player_stats))
+            continue
+        for col in cols:
+            key = col["data-stat"]
+            value = col.string
+            if key in str_fields:
+                pass
+            elif key in float_fields:
+                value = 0.0 if value is None else float(value)
+            else:
+                value = 0 if value is None else int(value)
+            player_stats[key] = value
+        stats.append(Player(**player_stats))
+
+    return stats
+
+
+def parse_game_page(sched_game, content):
+    """
+    Parses the game statistics from the web page.
+
+    Arguments:
+        sched_game : ScheduleGame object for the game
+        content    : HTML content string
+
+    Returns:
+        a Game object
+    """
+    game = {}
+    soup = bs4.BeautifulSoup(content, "html.parser")
+
+    # parse stats for players on the away team
+    game["away_team"] = sched_game.away_team_id
+    game["away_stats"] = _parse_game_page_for_team(
+        soup, sched_game.away_team_id)
+    # parse stats for players on the home team
+    game["home_team"] = sched_game.home_team_id
+    game["home_stats"] = _parse_game_page_for_team(
+        soup, sched_game.home_team_id)
+
+    return Game(**game)

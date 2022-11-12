@@ -14,6 +14,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from .nba_state import NBAState
+from .objects.game import Game
 from .objects.player import Player
 from .objects.schedule import ScheduleGame
 
