@@ -61,3 +61,10 @@ class Player:
     @property
     def ft_pct(self):
         return self.ft_per_g / self.fta_per_g
+
+    def bio(self):
+        """
+        Returns a string with basic information for the player including their
+        full name, position, and team.
+        """
+        return "%s - %s (%s)" % (self.player, self.pos, self.team_id)

@@ -21,9 +21,13 @@ class NBAState:
     Global store for NBA information and statistics.
     """
     players = []
+    schedule = []
 
     def set_players(self, nba_players):
         self.players = nba_players
+
+    def set_schedule(self, nba_schedule):
+        self.schedule = nba_schedule
 
     def filter_players(self, names):
         """

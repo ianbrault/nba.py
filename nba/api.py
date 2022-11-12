@@ -16,6 +16,8 @@
 from . import log
 from . import parse
 
+import calendar
+
 BASE_URL = "https://www.basketball-reference.com"
 # for some reason Basketball Reference rejects the default aiohttp user-agent
 # but we can work around this by using the requests user-agent instead
@@ -27,14 +29,14 @@ HEADERS = {
 
 async def get_players(session, season):
     """
-    Queries for info for all NBA players for the given season.
+    Queries for statistics for all NBA players for the given season.
 
     Arguments:
         session : aiohttp.ClientSession object
         season  : NBA season year
 
     Returns:
-        player info as a JSON object
+        a list of player info as JSON objects
     """
     url = "/leagues/NBA_%s_per_game.html" % season
     log.debug(
@@ -42,3 +44,24 @@ async def get_players(session, season):
     async with session.get(url) as rsp:
         data = await rsp.text()
         return parse.parse_players_stats_page(data)
+
+
+async def get_schedule_for_month(session, season, month):
+    """
+    Queries for NBA matchups for the given season and month.
+
+    Arguments:
+        session : aiohttp.ClientSession object
+        season  : NBA season year
+        month   : Month as an int
+
+    Returns:
+        a list of game info as JSON objects
+    """
+    month_name = calendar.month_name[month]
+    url = "/leagues/NBA_%s_games-%s.html" % (season, month_name.lower())
+    log.debug(
+        "querying %s %s schedule from %s%s" % (month_name, season, BASE_URL, url))
+    async with session.get(url) as rsp:
+        data = await rsp.text()
+        return parse.parse_schedule_page(data)

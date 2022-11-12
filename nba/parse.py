@@ -14,7 +14,8 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from . import log
-from .player import Player
+from . import Player
+from . import ScheduleGame
 
 import bs4
 
@@ -34,13 +35,15 @@ def parse_players_stats_page(content):
     # leave the following fields as strings, the remaining fields are assumed
     # to be floats
     str_fields = ["player", "pos", "team_id"]
+    # the following fields have values wrapped inside links
+    link_fields = ["player", "team_id"]
 
     table = soup.find("table", id="per_game_stats")
     for row in table.find_all("tr", class_="full_table"):
         player_info = {}
         for col in row.find_all("td"):
             key = col["data-stat"]
-            if key == "player" or key == "team_id":
+            if key in link_fields:
                 value = col.a.string
             else:
                 value = col.string
@@ -54,3 +57,43 @@ def parse_players_stats_page(content):
 
     log.debug("parsed info for %u players" % len(players))
     return players
+
+
+def parse_schedule_page(content):
+    """
+    Parses the season per-month game information from the web page.
+
+    Arguments:
+        content : HTML content string
+
+    Returns:
+        a list of parsed Game objects
+    """
+    games = []
+    soup = bs4.BeautifulSoup(content, "html.parser")
+    # the following fields have values wrapped inside links
+    link_fields = ["date_game", "visitor_team_name", "home_team_name"]
+
+    table = soup.find("table", id="schedule")
+    for row in table.find_all("tr"):
+        cols = row.find_all("td")
+        if not cols or ("class" in row and row["class"] == "thead"):
+            continue
+        game_info = {}
+        # date is in a th, remaining data is in td's
+        try:
+            game_info[row.th["data-stat"]] = row.th.a.string
+        except AttributeError as ex:
+            print(row)
+            raise ex
+        for col in cols:
+            key = col["data-stat"]
+            if key in link_fields:
+                value = col.a.string
+            else:
+                value = col.string
+            game_info[key] = value
+        games.append(ScheduleGame(**game_info))
+
+    log.debug("parsed info for %u games" % len(games))
+    return games

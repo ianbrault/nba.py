@@ -19,12 +19,13 @@ from nba import log
 from nba import state
 from nba import storage
 from nba import utils
-from nba.player import Player
+
+from nba import Player, ScheduleGame
 
 import aiohttp
 
 import asyncio
-import json
+import itertools
 import logging
 import os
 import pathlib
@@ -51,6 +52,30 @@ async def get_players(session):
     return players
 
 
+async def get_schedule(session):
+    schedule = []
+    season = utils.get_current_season()
+    local_file = LOCAL_STORAGE / ("schedule_%s.json" % season)
+    # check if the schedule for the current season is already stored locally
+    if local_file.exists():
+        schedule_json = storage.load_json(local_file)
+        schedule = [ScheduleGame(**obj) for obj in schedule_json]
+    # otherwise, grab via the API and store locally
+    else:
+        # games span from October thru April
+        months = [10, 11, 12, 1, 2, 3, 4]
+        # wait for all month schedules concurrently
+        promises = []
+        for month in months:
+            promises.append(api.get_schedule_for_month(session, season, month))
+        # await all and flatten into a single list
+        games = itertools.chain.from_iterable(await asyncio.gather(*promises))
+        schedule = list(sorted(games, key=lambda g: g.date_to_datetime()))
+        schedule_json = [g.toJSON() for g in schedule]
+        storage.store_json(local_file, schedule_json)
+    return schedule
+
+
 def player_season_averages(args):
     # filter player info for the given player
     log.debug("filtering for player with name(s): %s" % ", ".join(args.name))
@@ -64,7 +89,7 @@ def player_season_averages(args):
 
     player = matches[0]
     # print player name/position/team info
-    log.info("%s - %s (%s)" % (player.player, player.pos, player.team_id))
+    log.info(player.bio())
     log.info("%.1f pts" % player.pts_per_g)
     log.info(
         "%.3f FG%% (%.1f FG / %.1f FGA)"
@@ -83,6 +108,9 @@ async def run(args, session):
     # get NBA players info and add to global state
     players_info = await get_players(session)
     state.set_players(players_info)
+    # get NBA schedule and add to global state
+    schedule_info = await get_schedule(session)
+    state.set_schedule(schedule_info)
 
     if args.command == "avg":
         player_season_averages(args)
