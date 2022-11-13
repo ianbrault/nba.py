@@ -57,12 +57,15 @@ def parse_args(args):
         "name", nargs="+",
         help="Player name, specify first/last/both as needed")
 
-    last_5_subparser = add_subparser(
-        subparsers, "L5",
+    games_subparser = add_subparser(
+        subparsers, "games",
         description="Reports stats from the last 5 games for the given "
         "player.")
-    last_5_subparser.add_argument(
+    games_subparser.add_argument(
         "name", nargs="+",
         help="Player name, specify first/last/both as needed")
+    games_subparser.add_argument(
+        "-n", metavar="GAMES", type=int, default=5,
+        help="Number of games")
 
     return parser.parse_args(args)

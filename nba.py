@@ -130,7 +130,7 @@ def player_season_averages(args):
     log.info("%.1f ast" % player.ast_per_g)
 
 
-async def player_last_5_games(args, session):
+async def player_game_log(args, session):
     # filter player info for the given player
     player = find_player_by_name(args.name)
     team_id = player.team_id
@@ -148,7 +148,7 @@ async def player_last_5_games(args, session):
     # track the number of games that have been printed and skip over DNPs
     ngames = 0
     for sched, game in reversed(list(zip(player_schedule, game_info))):
-        if ngames == 5:
+        if ngames == args.n:
             break
         # print date/location/opponent for game
         where = "v." if game.is_home_team(player.team_id) else "@ "
@@ -176,8 +176,8 @@ async def run(args, session):
 
     if args.command == "avg":
         player_season_averages(args)
-    if args.command == "L5":
-        await player_last_5_games(args, session)
+    if args.command == "games":
+        await player_game_log(args, session)
 
 
 async def main(args):
