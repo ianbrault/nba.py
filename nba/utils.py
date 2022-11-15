@@ -30,7 +30,7 @@ def get_date_key():
 def get_current_season():
     """
     Gets the year for the current season. For use by Basketball Reference, this
-    is the year of the latter half of the season i.e. return 2023 for the
+    is the year of the former half of the season i.e. return 2022 for the
     2022-23 season.
 
     Returns:
@@ -38,7 +38,7 @@ def get_current_season():
     """
     now = datetime.datetime.now()
     year = now.year
-    # use October as the start of the season
-    if now.month >= 10:
-        year += 1
+    # use April as the end of the (regular) season
+    if now.month <= 4:
+        year -= 1
     return year

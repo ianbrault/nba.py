@@ -43,13 +43,14 @@ def build_url(base, **kwargs):
     return "%s?%s" % (base, params)
 
 
-async def get_json(session, url, **kwargs):
+async def get_json(session, url, data=False,**kwargs):
     """
     Performs a GET request for JSON data.
 
     Arguments:
         session : aiohttp.ClientSession object
         url     : Full URL string
+        data    : Only return the data payload, excluding the meta payload
         kwargs  : Query parameters
 
     Returns:
@@ -58,7 +59,10 @@ async def get_json(session, url, **kwargs):
     url = build_url(url, **kwargs)
     log.debug("query: %s%s" % (BASE_URL, url))
     async with session.get(url) as rsp:
-        return await rsp.json()
+        rsp = await rsp.json()
+        if data:
+            rsp = rsp["data"]
+        return rsp
 
 
 async def get_paginated(session, base_url, **kwargs):
@@ -90,7 +94,8 @@ async def get_paginated(session, base_url, **kwargs):
         promises.append(get_json(session, base_url, **args))
     # await all requests and combine results
     responses = await asyncio.gather(*promises)
-    data.extend(itertools.chain.from_iterable(responses))
+    data.extend(
+        itertools.chain.from_iterable(rsp["data"] for rsp in responses))
     return data
 
 
@@ -111,3 +116,21 @@ async def get_players(session, name=None):
         args["search"] = name
     # data is paginated
     return await get_paginated(session, url, **args)
+
+
+async def get_player_season_averages(session, season, player_id):
+    """
+    Retrieves season averages for the given NBA player.
+
+    Arguments:
+        session   : aiohttp.ClientSession object
+        season    : NBA season
+        player_id : Player ID
+
+    Returns:
+        the player averages as a JSON object
+    """
+    url = "/api/v1/season_averages"
+    args = {"season": season, "player_ids[]": player_id}
+    rsp = await get_json(session, url, **args, data=True)
+    return rsp[0] if rsp else None

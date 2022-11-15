@@ -18,6 +18,7 @@ from nba import cli
 from nba import log
 from nba import state
 from nba import storage
+from nba import utils
 
 from nba import Player
 
@@ -87,21 +88,28 @@ async def player_season_averages(args, session):
     if player is None:
         return
 
+    # grab the player season averages for the current season
+    season = utils.get_current_season()
+    averages = await api.get_player_season_averages(session, season, player.id)
+    if not averages:
+        return
+
     # print player name/position/team info
     log.info(player.bio())
-    # # print player season averages
-    # log.info("%.1f pts" % player.pts_per_g)
-    # log.info(
-    #     "%.3f FG%% (%.1f FG / %.1f FGA)"
-    #     % (player.fg_pct_per_g, player.fg_per_g, player.fga_per_g))
-    # log.info(
-    #     "%.3f 3PT%% (%.1f 3PT / %.1f 3PTA)"
-    #     % (player.fg3_pct_per_g, player.fg3_per_g, player.fg3a_per_g))
-    # log.info(
-    #     "%.3f FT%% (%.1f FT / %.1f FTA)"
-    #     % (player.ft_pct_per_g, player.ft_per_g, player.fta_per_g))
-    # log.info("%.1f reb" % player.trb_per_g)
-    # log.info("%.1f ast" % player.ast_per_g)
+    # print player season averages
+    log.info("%s GP %s MPG" % (averages["games_played"], averages["min"]))
+    log.info(
+        "%.1f pts %.1f reb %.1f ast"
+        % (averages["pts"], averages["reb"], averages["ast"]))
+    log.info(
+        "%.3f FG%% (%.1f FG / %.1f FGA)"
+        % (averages["fg_pct"], averages["fgm"], averages["fga"]))
+    log.info(
+        "%.3f 3PT%% (%.1f 3PT / %.1f 3PTA)"
+        % (averages["fg3_pct"], averages["fg3m"], averages["fg3a"]))
+    log.info(
+        "%.3f FT%% (%.1f FT / %.1f FTA)"
+        % (averages["ft_pct"], averages["ftm"], averages["fta"]))
 
 
 async def player_game_log(args, session):
