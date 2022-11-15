@@ -18,11 +18,8 @@ from nba import cli
 from nba import log
 from nba import state
 from nba import storage
-from nba import utils
 
-from nba import Game
 from nba import Player
-from nba import ScheduleGame
 
 import aiohttp
 
@@ -37,156 +34,128 @@ import sys
 LOCAL_STORAGE = pathlib.Path(os.environ["HOME"]) / ".nba"
 
 
-async def get_players(session):
+def load_players():
     players = []
-    season = utils.get_current_season()
-    date = utils.get_date_key()
-    local_file = LOCAL_STORAGE / ("players_%s.json" % date)
-    # check if the player info for the current date is already stored locally
-    if local_file.exists():
-        players_json = storage.load_json(local_file)
+    path = LOCAL_STORAGE / "players.json"
+    if path.exists():
+        players_json = storage.load_json(path)
         players = [Player(**obj) for obj in players_json]
-    # otherwise, grab via the API and store locally
-    else:
-        players = await api.get_players(session, season)
-        players_json = [p.toJSON() for p in players]
-        storage.store_json(local_file, players_json)
     return players
 
 
-async def get_schedule_for_season(session, season):
-    schedule = []
-    local_file = LOCAL_STORAGE / ("schedule_%s.json" % season)
-    # check if the schedule for the season is already stored locally
-    if local_file.exists():
-        schedule_json = storage.load_json(local_file)
-        schedule = [ScheduleGame(**obj) for obj in schedule_json]
-    # otherwise, grab via the API and store locally
-    else:
-        schedule = await api.get_schedule_for_season(session, season)
-        schedule_json = [g.toJSON() for g in schedule]
-        storage.store_json(local_file, schedule_json)
-    # sort chronologically before returning
-    schedule = list(sorted(schedule, key=lambda g: g.date_to_datetime()))
-    return schedule
+def store_players(players):
+    path = LOCAL_STORAGE / "players.json"
+    players_json = [player.toJSON() for player in players]
+    storage.store_json(path, players_json)
 
 
-async def get_schedule(args, session):
-    curr_season = utils.get_current_season()
-    # get the schedule for the current and previous seasons, as requested
-    season = curr_season - args.lookback
-    # wait for all month schedules concurrently
+async def get_player(args, session):
+    player = None
+    log.debug("searching for player: %s" % " ".join(args.name))
+    # check if the player is already stored in the state
+    players = state.filter_players(args.name)
+    if len(players) == 1:
+        return players[0]
+    # otherwise query the API to grab the missing player or any matches that
+    # are not already stored in the state
     promises = []
-    while season <= curr_season:
-        promises.append(get_schedule_for_season(session, season))
-        season += 1
-    # await all and flatten into a single list
-    return itertools.chain.from_iterable(await asyncio.gather(*promises))
-
-
-async def get_game(session, sched_game):
-    game = None
-    fname = "game_%s_%s_%s.json" % (
-        sched_game.date_key(), sched_game.away_team_id,
-        sched_game.home_team_id)
-    local_file = LOCAL_STORAGE / fname
-    # check if the game is already stored locally
-    if local_file.exists():
-        game_json = storage.load_json(local_file)
-        game = Game.fromJSON(game_json)
-    # otherwise, grab via the API and store locally
-    else:
-        game = await api.get_game(session, sched_game)
-        storage.store_json(local_file, game.toJSON())
-    return game
-
-
-def find_player_by_name(names):
-    # filter player info for the given player
-    log.debug("filtering for player with name(s): %s" % ", ".join(names))
-    matches = state.filter_players(names)
+    for name in args.name:
+        promises.append(api.get_players(session, name=name))
+    responses = await asyncio.gather(*promises)
+    players.extend(
+        Player(**obj) for obj in itertools.chain.from_iterable(responses))
+    # add all players to the state and then re-filter
+    state.add_players(players)
+    matches = state.filter_players(args.name)
+    # check if the player was not found
     if not matches:
-        log.error("failed to find player with name \"%s\"" % " ".join(names))
-        sys.exit(1)
+        log.error("failed to find player \"%s\"" % " ".join(args.name))
+    # check if there are too many matches
     elif len(matches) > 1:
-        log.error(
-            "multiple player matches for name \"%s\"" % " ".join(names))
+        log.error("multiple player matches for \"%s\"" % " ".join(args.name))
         match_names = [player.full_name for player in matches]
         log.info("select one of the following:\n%s" % "\n".join(match_names))
-        sys.exit(1)
+    # otherwise we found a single matching player
+    else:
+        player = matches[0]
+    return player
 
-    return matches[0]
 
-
-def player_season_averages(args):
-    # filter player info for the given player
-    player = find_player_by_name(args.name)
+async def player_season_averages(args, session):
+    # search for the given player
+    player = await get_player(args, session)
+    if player is None:
+        return
 
     # print player name/position/team info
     log.info(player.bio())
-    # print player season averages
-    log.info("%.1f pts" % player.pts_per_g)
-    log.info(
-        "%.3f FG%% (%.1f FG / %.1f FGA)"
-        % (player.fg_pct_per_g, player.fg_per_g, player.fga_per_g))
-    log.info(
-        "%.3f 3PT%% (%.1f 3PT / %.1f 3PTA)"
-        % (player.fg3_pct_per_g, player.fg3_per_g, player.fg3a_per_g))
-    log.info(
-        "%.3f FT%% (%.1f FT / %.1f FTA)"
-        % (player.ft_pct_per_g, player.ft_per_g, player.fta_per_g))
-    log.info("%.1f reb" % player.trb_per_g)
-    log.info("%.1f ast" % player.ast_per_g)
+    # # print player season averages
+    # log.info("%.1f pts" % player.pts_per_g)
+    # log.info(
+    #     "%.3f FG%% (%.1f FG / %.1f FGA)"
+    #     % (player.fg_pct_per_g, player.fg_per_g, player.fga_per_g))
+    # log.info(
+    #     "%.3f 3PT%% (%.1f 3PT / %.1f 3PTA)"
+    #     % (player.fg3_pct_per_g, player.fg3_per_g, player.fg3a_per_g))
+    # log.info(
+    #     "%.3f FT%% (%.1f FT / %.1f FTA)"
+    #     % (player.ft_pct_per_g, player.ft_per_g, player.fta_per_g))
+    # log.info("%.1f reb" % player.trb_per_g)
+    # log.info("%.1f ast" % player.ast_per_g)
 
 
 async def player_game_log(args, session):
-    # filter player info for the given player
-    player = find_player_by_name(args.name)
-    team_id = player.team_id
-    # grab all played games for the player, we will sub-filter afterwards
-    # this gives ample margin to skip over DNPs
-    player_schedule = state.filter_schedule(team_id)
-    # grab info from games
-    game_info_promises = [get_game(session, g) for g in player_schedule]
-    game_info = await asyncio.gather(*game_info_promises)
+    # search for the given player
+    player = await get_player(args, session)
+    if player is None:
+        return
+
+    # # filter player info for the given player
+    # player = find_player_by_name(args.name)
+    # team_id = player.team_id
+    # # grab all played games for the player, we will sub-filter afterwards
+    # # this gives ample margin to skip over DNPs
+    # player_schedule = state.filter_schedule(team_id)
+    # # grab info from games
+    # game_info_promises = [get_game(session, g) for g in player_schedule]
+    # game_info = await asyncio.gather(*game_info_promises)
 
     # print player name/position/team info
     log.info(player.bio())
-    # print player stats for each game
-    # reverse so the report is newest-to-oldest
-    # track the number of games that have been printed and skip over DNPs
-    ngames = 0
-    for sched, game in reversed(list(zip(player_schedule, game_info))):
-        if ngames == args.n:
-            break
-        # print date/location/opponent for game
-        where = "v." if game.is_home_team(player.team_id) else "@ "
-        game_bio = "%s %s %s" % (
-            sched.date_str_brief(), where, game.opponent_id(player.team_id))
-        # get player stats for the game
-        stats = game.get_player_stats(player)
-        if stats is None:
-            # DNP, skip this game
-            continue
-        log.info(
-            "%s: %u pts (%.3f FG%% %u FGA) %u reb %u ast"
-            % (game_bio, stats.pts, stats.fg_pct, stats.fga, stats.trb,
-               stats.ast))
-        ngames += 1
+    # # print player stats for each game
+    # # reverse so the report is newest-to-oldest
+    # # track the number of games that have been printed and skip over DNPs
+    # ngames = 0
+    # for sched, game in reversed(list(zip(player_schedule, game_info))):
+    #     if ngames == args.n:
+    #         break
+    #     # print date/location/opponent for game
+    #     where = "v." if game.is_home_team(player.team_id) else "@ "
+    #     game_bio = "%s %s %s" % (
+    #         sched.date_str_brief(), where, game.opponent_id(player.team_id))
+    #     # get player stats for the game
+    #     stats = game.get_player_stats(player)
+    #     if stats is None:
+    #         # DNP, skip this game
+    #         continue
+    #     log.info(
+    #         "%s: %u pts (%.3f FG%% %u FGA) %u reb %u ast"
+    #         % (game_bio, stats.pts, stats.fg_pct, stats.fga, stats.trb,
+    #            stats.ast))
+    #     ngames += 1
 
 
 async def run(args, session):
-    # get NBA players info and add to global state
-    players_info = await get_players(session)
-    state.set_players(players_info)
-    # get NBA schedule and add to global state
-    schedule_info = await get_schedule(args, session)
-    state.set_schedule(schedule_info)
+    # load any stored NBA player info
+    state.set_players(load_players())
 
     if args.command == "avg":
-        player_season_averages(args)
+        await player_season_averages(args, session)
     if args.command == "games":
         await player_game_log(args, session)
+
+    # flush NBA player info to local storage
+    store_players(state.players)
 
 
 async def main(args):

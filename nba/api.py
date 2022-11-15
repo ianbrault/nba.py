@@ -14,97 +14,100 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from . import log
-from . import parse
-from . import utils
 
 import asyncio
-import calendar
 import itertools
 
-BASE_URL = "https://www.basketball-reference.com"
-# for some reason Basketball Reference rejects the default aiohttp user-agent
-# but we can work around this by using the requests user-agent instead
+BASE_URL = "https://www.balldontlie.io"
 HEADERS = {
     "Connection": "keep-alive",
     "User-Agent": "python-requests/2.28.1",
 }
+RESULTS_PER_PAGE = 100
 
 
-async def get_players(session, season):
+def build_url(base, **kwargs):
     """
-    Queries for statistics for all NBA players for the given season.
+    Builds a URL query string given the base stem and query parameters.
+
+    Arguments:
+        base   : Base URL
+        kwargs : Query parameters
+
+    Returns:
+        the URL string
+    """
+    if not kwargs:
+        return base
+    params = "&".join("%s=%s" % (k, v) for k, v in kwargs.items())
+    return "%s?%s" % (base, params)
+
+
+async def get_json(session, url, **kwargs):
+    """
+    Performs a GET request for JSON data.
 
     Arguments:
         session : aiohttp.ClientSession object
-        season  : NBA season year
+        url     : Full URL string
+        kwargs  : Query parameters
+
+    Returns:
+        the retrieved JSON data, or {} if an error was encountered
+    """
+    url = build_url(url, **kwargs)
+    log.debug("query: %s%s" % (BASE_URL, url))
+    async with session.get(url) as rsp:
+        return await rsp.json()
+
+
+async def get_paginated(session, base_url, **kwargs):
+    """
+    Performs a series of GET requests for paginated data.
+
+    Arguments:
+        session  : aiohttp.ClientSession object
+        base_url : Base URL
+        kwargs   : Query parameters (excluding pagination arguments)
+
+    Returns:
+        the paginated data as JSON
+    """
+    data = []
+    # perform the initial request
+    args = kwargs.copy()
+    args["per_page"] = RESULTS_PER_PAGE
+    req = await get_json(session, base_url, **args)
+    data.extend(req["data"])
+    # check if there are any further pages
+    next_page = req["meta"]["next_page"]
+    if not next_page:
+        return data
+    # perform requests for remaining pages concurrently
+    promises = []
+    for page in range(next_page, req["meta"]["total_pages"] + 1):
+        args["page"] = page
+        promises.append(get_json(session, base_url, **args))
+    # await all requests and combine results
+    responses = await asyncio.gather(*promises)
+    data.extend(itertools.chain.from_iterable(responses))
+    return data
+
+
+async def get_players(session, name=None):
+    """
+    Retrieves information for all NBA players.
+
+    Arguments:
+        session : aiohttp.ClientSession object
+        name    : Filter on the player first/last name
 
     Returns:
         a list of player info as JSON objects
     """
-    url = "/leagues/NBA_%s_per_game.html" % season
-    log.debug(
-        "querying %s season players info from %s%s" % (season, BASE_URL, url))
-    async with session.get(url) as rsp:
-        data = await rsp.text()
-        return parse.parse_players_stats_page(data)
-
-
-async def get_schedule_for_month(session, season, month):
-    """
-    Queries for NBA matchups for the given season and month.
-
-    Arguments:
-        session : aiohttp.ClientSession object
-        season  : NBA season year
-        month   : Month as an int
-
-    Returns:
-        a list of game info as JSON objects
-    """
-    month_name = calendar.month_name[month]
-    url = "/leagues/NBA_%s_games-%s.html" % (season, month_name.lower())
-    log.debug(
-        "querying %s %s schedule from %s%s" % (month_name, season, BASE_URL, url))
-    async with session.get(url) as rsp:
-        data = await rsp.text()
-        return parse.parse_schedule_page(data)
-
-
-async def get_schedule_for_season(session, season):
-    """
-    Queries for NBA matchups for the given season and month.
-
-    Arguments:
-        session : aiohttp.ClientSession object
-        season  : NBA season year
-
-    Returns:
-        a list of game info as JSON objects
-    """
-    # games span from October thru April
-    months = [10, 11, 12, 1, 2, 3, 4]
-    # wait for all month schedules concurrently
-    promises = []
-    for month in months:
-        promises.append(get_schedule_for_month(session, season, month))
-    # await all and flatten into a single list
-    return itertools.chain.from_iterable(await asyncio.gather(*promises))
-
-
-async def get_game(session, schedule_game):
-    """
-    Queries for statistics from the given game.
-
-    Arguments:
-        session       : aiohttp.ClientSession object
-        schedule_game : ScheduleGame object for the game
-
-    Returns:
-        a JSON object for the game
-    """
-    home_team = utils.FULL_NAME_TO_TRICODE[schedule_game.home_team_name]
-    url = "/boxscores/%s0%s.html" % (schedule_game.date_key(), home_team)
-    log.debug("querying game info from %s%s" % (BASE_URL, url))
-    async with session.get(url) as rsp:
-        data = await rsp.text()
-        return parse.parse_game_page(schedule_game, data)
+    url = "/api/v1/players"
+    args = {}
+    if name:
+        args["search"] = name
+    # data is paginated
+    return await get_paginated(session, url, **args)

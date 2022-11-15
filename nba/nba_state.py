@@ -13,8 +13,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from . import utils
-
 import operator
 
 
@@ -23,13 +21,22 @@ class NBAState:
     Global store for NBA information and statistics.
     """
     players = []
-    schedule = []
+    # used to avoid duplication of player objects
+    player_ids = set()
 
     def set_players(self, nba_players):
         self.players = nba_players
+        for player in self.players:
+            self.player_ids.add(player.id)
 
-    def set_schedule(self, nba_schedule):
-        self.schedule = nba_schedule
+    def add_player(self, player):
+        if player.id not in self.player_ids:
+            self.players.append(player)
+            self.player_ids.add(player.id)
+
+    def add_players(self, player_list):
+        for player in player_list:
+            self.add_player(player)
 
     def filter_players(self, names):
         """
@@ -40,11 +47,8 @@ class NBAState:
                     a list of 1 or 2 strings
 
         Returns:
-            a list of matching player objects
+            a list of matching Player objects
         """
-        # players must be set
-        if not self.players:
-            raise RuntimeError("NBAState.players has not been set")
         if not isinstance(names, list):
             names = list(names)
 
@@ -61,27 +65,3 @@ class NBAState:
             p for p in self.players
             if combinator(
                 p.first_name.upper() == first, p.last_name.upper() == last)]
-
-    def filter_schedule(self, team_id, played=True):
-        """
-        Filters the schedule for games based on the given team tricode.
-
-        Arguments:
-            team_id : Team tricode
-            played  : Only include games that have already been played
-
-        Returns:
-            a list of matching game objects
-        """
-        # schedule must be set
-        if not self.schedule:
-            raise RuntimeError("NBAState.schedule has not been set")
-
-        team = utils.TRICODE_TO_FULL_NAME[team_id]
-        games = [
-            g for g in self.schedule
-            if g.home_team_name == team or g.visitor_team_name == team]
-        # further filter by games that have already been played, if requested
-        if played:
-            games = [g for g in games if g.is_played()]
-        return games

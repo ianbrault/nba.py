@@ -63,21 +63,6 @@ tests = ["coverage[toml] (>=5.0.2)", "hypothesis", "pympler", "pytest (>=4.3.0)"
 tests_no_zope = ["coverage[toml] (>=5.0.2)", "hypothesis", "pympler", "pytest (>=4.3.0)", "mypy (>=0.900,!=0.940)", "pytest-mypy-plugins", "cloudpickle"]
 
 [[package]]
-name = "beautifulsoup4"
-version = "4.11.1"
-description = "Screen-scraping library"
-category = "main"
-optional = false
-python-versions = ">=3.6.0"
-
-[package.dependencies]
-soupsieve = ">1.2"
-
-[package.extras]
-html5lib = ["html5lib"]
-lxml = ["lxml"]
-
-[[package]]
 name = "cffi"
 version = "1.15.1"
 description = "Foreign Function Interface for Python calling C code."
@@ -240,14 +225,6 @@ pytest = ">=6.1.0"
 testing = ["coverage (>=6.2)", "hypothesis (>=5.7.1)", "flaky (>=3.5.0)", "mypy (>=0.931)", "pytest-trio (>=0.7.0)"]
 
 [[package]]
-name = "soupsieve"
-version = "2.3.2.post1"
-description = "A modern CSS selector implementation for Beautiful Soup."
-category = "main"
-optional = false
-python-versions = ">=3.6"
-
-[[package]]
 name = "tomli"
 version = "2.0.1"
 description = "A lil' TOML parser"
@@ -270,7 +247,7 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "604bbae0b31165e7b81039fdf5e93bc49cb2bbc0c3f784abb0b43444909307d6"
+content-hash = "0e135d7992b5d7d97837866a449d0feebdf2daac3d35977211d6f96f3f53431d"
 
 [metadata.files]
 aiodns = []
@@ -278,7 +255,6 @@ aiohttp = []
 aiosignal = []
 async-timeout = []
 attrs = []
-beautifulsoup4 = []
 cffi = []
 charset-normalizer = []
 colorama = []
@@ -297,6 +273,5 @@ pycparser = []
 pyparsing = []
 pytest = []
 pytest-asyncio = []
-soupsieve = []
 tomli = []
 yarl = []

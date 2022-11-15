@@ -13,27 +13,25 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from nba import __version__
-from nba import api
 
-import aiohttp
+class Team:
+    """
+    Stores team information.
+    """
 
+    def __init__(
+        self,
+        id=None, abbreviation=None, city=None, conference=None, division=None,
+        full_name=None, name=None,
+        **kwargs,
+    ):
+        self.id = id
+        self.abbreviation = abbreviation
+        self.city = city
+        self.conference = conference
+        self.division = division
+        self.full_name = full_name
+        self.name = name
 
-def test_version():
-    assert __version__ == "0.3.0"
-
-
-def aio_session():
-    return aiohttp.ClientSession(
-        base_url=api.BASE_URL, headers=api.HEADERS, raise_for_status=True)
-
-
-def test_build_url():
-    base_url = "www.foo.bar/baz"
-    params = {"a": "X", "b": "Y", "c": "Z"}
-    result = api.build_url(base_url, **params)
-    assert result.startswith("www.foo.bar/baz?")
-    assert "a=X" in result
-    assert "b=Y" in result
-    assert "c=Z" in result
-    assert len([c for c in result if c == "&"]) == 2
+    def toJSON(self):
+        return self.__dict__
