@@ -49,16 +49,18 @@ class NBAState:
             names = list(names)
 
         if len(names) > 1:
-            first, last = names
+            first = names[0].upper()
+            last = names[1].upper()
             combinator = operator.__and__
         else:
-            first = names[0]
-            last = names[0]
+            first = names[0].upper()
+            last = names[0].upper()
             combinator = operator.__or__
 
         return [
             p for p in self.players
-            if combinator(p.first_name == first, p.last_name == last)]
+            if combinator(
+                p.first_name.upper() == first, p.last_name.upper() == last)]
 
     def filter_schedule(self, team_id, played=True):
         """

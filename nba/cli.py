@@ -13,6 +13,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+from . import utils
+
 import argparse
 
 
@@ -34,6 +36,15 @@ def add_subparser(subparsers, command, description=""):
         "-d", "--debug", action="store_true",
         help="Enable debug output.")
     return subparser
+
+
+def validate_team_id_arg(arg):
+    """
+    Validates a team ID i.e. tricode argument.
+    """
+    if arg not in utils.TRICODE_TO_FULL_NAME.keys():
+        raise argparse.ArgumentError("invalid team \"%s\"" % arg)
+    return arg
 
 
 def parse_args(args):
@@ -67,5 +78,11 @@ def parse_args(args):
     games_subparser.add_argument(
         "-n", metavar="GAMES", type=int, default=5,
         help="Number of games")
+    games_subparser.add_argument(
+        "-o", metavar="TEAM", type=validate_team_id_arg,
+        help="Opponent")
+    games_subparser.add_argument(
+        "--lookback", metavar="SEASONS", type=int, default=1,
+        help="Grab games from previous seasons")
 
     return parser.parse_args(args)

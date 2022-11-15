@@ -54,28 +54,34 @@ async def get_players(session):
     return players
 
 
-async def get_schedule(session):
+async def get_schedule_for_season(session, season):
     schedule = []
-    season = utils.get_current_season()
     local_file = LOCAL_STORAGE / ("schedule_%s.json" % season)
-    # check if the schedule for the current season is already stored locally
+    # check if the schedule for the season is already stored locally
     if local_file.exists():
         schedule_json = storage.load_json(local_file)
         schedule = [ScheduleGame(**obj) for obj in schedule_json]
     # otherwise, grab via the API and store locally
     else:
-        # games span from October thru April
-        months = [10, 11, 12, 1, 2, 3, 4]
-        # wait for all month schedules concurrently
-        promises = []
-        for month in months:
-            promises.append(api.get_schedule_for_month(session, season, month))
-        # await all and flatten into a single list
-        games = itertools.chain.from_iterable(await asyncio.gather(*promises))
-        schedule = list(sorted(games, key=lambda g: g.date_to_datetime()))
+        schedule = await api.get_schedule_for_season(session, season)
         schedule_json = [g.toJSON() for g in schedule]
         storage.store_json(local_file, schedule_json)
+    # sort chronologically before returning
+    schedule = list(sorted(schedule, key=lambda g: g.date_to_datetime()))
     return schedule
+
+
+async def get_schedule(args, session):
+    curr_season = utils.get_current_season()
+    # get the schedule for the current and previous seasons, as requested
+    season = curr_season - args.lookback
+    # wait for all month schedules concurrently
+    promises = []
+    while season <= curr_season:
+        promises.append(get_schedule_for_season(session, season))
+        season += 1
+    # await all and flatten into a single list
+    return itertools.chain.from_iterable(await asyncio.gather(*promises))
 
 
 async def get_game(session, sched_game):
@@ -99,7 +105,10 @@ def find_player_by_name(names):
     # filter player info for the given player
     log.debug("filtering for player with name(s): %s" % ", ".join(names))
     matches = state.filter_players(names)
-    if len(matches) > 1:
+    if not matches:
+        log.error("failed to find player with name \"%s\"" % " ".join(names))
+        sys.exit(1)
+    elif len(matches) > 1:
         log.error(
             "multiple player matches for name \"%s\"" % " ".join(names))
         match_names = [player.full_name for player in matches]
@@ -137,7 +146,7 @@ async def player_game_log(args, session):
     # grab all played games for the player, we will sub-filter afterwards
     # this gives ample margin to skip over DNPs
     player_schedule = state.filter_schedule(team_id)
-    # grab info from those 5 games
+    # grab info from games
     game_info_promises = [get_game(session, g) for g in player_schedule]
     game_info = await asyncio.gather(*game_info_promises)
 
@@ -171,7 +180,7 @@ async def run(args, session):
     players_info = await get_players(session)
     state.set_players(players_info)
     # get NBA schedule and add to global state
-    schedule_info = await get_schedule(session)
+    schedule_info = await get_schedule(args, session)
     state.set_schedule(schedule_info)
 
     if args.command == "avg":

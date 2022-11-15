@@ -17,7 +17,9 @@ from . import log
 from . import parse
 from . import utils
 
+import asyncio
 import calendar
+import itertools
 
 BASE_URL = "https://www.basketball-reference.com"
 # for some reason Basketball Reference rejects the default aiohttp user-agent
@@ -66,6 +68,27 @@ async def get_schedule_for_month(session, season, month):
     async with session.get(url) as rsp:
         data = await rsp.text()
         return parse.parse_schedule_page(data)
+
+
+async def get_schedule_for_season(session, season):
+    """
+    Queries for NBA matchups for the given season and month.
+
+    Arguments:
+        session : aiohttp.ClientSession object
+        season  : NBA season year
+
+    Returns:
+        a list of game info as JSON objects
+    """
+    # games span from October thru April
+    months = [10, 11, 12, 1, 2, 3, 4]
+    # wait for all month schedules concurrently
+    promises = []
+    for month in months:
+        promises.append(get_schedule_for_month(session, season, month))
+    # await all and flatten into a single list
+    return itertools.chain.from_iterable(await asyncio.gather(*promises))
 
 
 async def get_game(session, schedule_game):
