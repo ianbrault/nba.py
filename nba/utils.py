@@ -13,7 +13,22 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import asyncio
 import datetime
+
+
+async def await_and_gather(iterable):
+    """
+    Execute and gather all promises in the given iterable.
+
+    Arguments:
+        iterable : Iterable of futures
+
+    Returns:
+        the values returned by the futures, as a nested list or as a flat list
+        if the chain argument is set
+    """
+    return await asyncio.gather(*list(iterable))
 
 
 def get_date_key():

@@ -16,6 +16,7 @@
 from . import log
 
 import asyncio
+import collections
 import itertools
 
 BASE_URL = "https://www.balldontlie.io"
@@ -39,8 +40,16 @@ def build_url(base, **kwargs):
     """
     if not kwargs:
         return base
-    params = "&".join("%s=%s" % (k, v) for k, v in kwargs.items())
-    return "%s?%s" % (base, params)
+    param_strs = []
+    for key, value in kwargs.items():
+        is_iter = isinstance(value, collections.abc.Iterable)
+        is_str = isinstance(value, str)
+        if is_iter and not is_str:
+            for val in value:
+                param_strs.append("%s[]=%s" % (key, val))
+        else:
+            param_strs.append("%s=%s" % (key, value))
+    return "%s?%s" % (base, "&".join(param_strs))
 
 
 async def get_json(session, url, data=False,**kwargs):
@@ -118,19 +127,55 @@ async def get_players(session, name=None):
     return await get_paginated(session, url, **args)
 
 
-async def get_player_season_averages(session, season, player_id):
+async def get_all_teams(session):
+    """
+    Retrieves information for all NBA teams.
+
+    Arguments:
+        session : aiohttp.ClientSession object
+
+    Returns:
+        a list of team info as JSON objects
+    """
+    url = "/api/v1/teams"
+    # data is paginated
+    return await get_paginated(session, url)
+
+
+async def get_player_season_averages(session, player_id, season):
     """
     Retrieves season averages for the given NBA player.
 
     Arguments:
         session   : aiohttp.ClientSession object
-        season    : NBA season
         player_id : Player ID
+        season    : NBA season
 
     Returns:
         the player averages as a JSON object
     """
     url = "/api/v1/season_averages"
-    args = {"season": season, "player_ids[]": player_id}
+    args = {"season": season, "player_ids": [player_id]}
     rsp = await get_json(session, url, **args, data=True)
     return rsp[0] if rsp else None
+
+
+async def get_player_game_stats(session, player_id, seasons):
+    """
+    Retrieves game statistics for the given NBA player from the provided NBA
+    season(s).
+
+    Arguments:
+        session   : aiohttp.ClientSession object
+        player_id : Player ID
+        seasons   : NBA season(s) can be an int or a list
+
+    Returns:
+        the player averages as a JSON object
+    """
+    if not isinstance(seasons, collections.abc.Iterable):
+        seasons = [seasons]
+    url = "/api/v1/stats"
+    args = {"seasons": seasons, "player_ids": [player_id]}
+    # data is paginated
+    return await get_paginated(session, url, **args)

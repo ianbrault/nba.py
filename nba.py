@@ -21,6 +21,8 @@ from nba import storage
 from nba import utils
 
 from nba import Player
+from nba import PlayerGameStats
+from nba import Team
 
 import aiohttp
 
@@ -59,10 +61,8 @@ async def get_player(args, session):
         return players[0]
     # otherwise query the API to grab the missing player or any matches that
     # are not already stored in the state
-    promises = []
-    for name in args.name:
-        promises.append(api.get_players(session, name=name))
-    responses = await asyncio.gather(*promises)
+    responses = await utils.await_and_gather(
+        api.get_players(session, name=name) for name in args.name)
     players.extend(
         Player(**obj) for obj in itertools.chain.from_iterable(responses))
     # add all players to the state and then re-filter
@@ -82,6 +82,37 @@ async def get_player(args, session):
     return player
 
 
+async def get_teams(session):
+    teams_json = []
+    path = LOCAL_STORAGE / "teams.json"
+    # check if the team information is already stored locally
+    if path.exists():
+        teams_json = storage.load_json(path)
+    # otherwise, grab via the API and store locally
+    else:
+        teams_json = await api.get_all_teams(session)
+        storage.store_json(path, teams_json)
+    teams = [Team(**obj) for obj in teams_json]
+    return teams
+
+
+async def get_player_game_stats_for_season(session, player_id, season):
+    stats_json = []
+    path = LOCAL_STORAGE / ("player_%s_games_%s.json" % (player_id, season))
+    # always get the current stats if the current season is requested
+    is_curr_season = season == utils.get_current_season()
+    if not is_curr_season and path.exists():
+        stats_json = storage.load_json(path)
+    else:
+        stats_json = await api.get_player_game_stats(
+            session, player_id, season)
+        # only flush if a previous season was requested
+        if not is_curr_season:
+            storage.store_json(path, stats_json)
+    stats = [PlayerGameStats(**obj) for obj in stats_json]
+    return stats
+
+
 async def player_season_averages(args, session):
     # search for the given player
     player = await get_player(args, session)
@@ -90,7 +121,8 @@ async def player_season_averages(args, session):
 
     # grab the player season averages for the current season
     season = utils.get_current_season()
-    averages = await api.get_player_season_averages(session, season, player.id)
+    # TODO: these averages include DNPs, need to derive the averages ourselves
+    averages = await api.get_player_season_averages(session, player.id, season)
     if not averages:
         return
 
@@ -118,44 +150,47 @@ async def player_game_log(args, session):
     if player is None:
         return
 
-    # # filter player info for the given player
-    # player = find_player_by_name(args.name)
-    # team_id = player.team_id
-    # # grab all played games for the player, we will sub-filter afterwards
-    # # this gives ample margin to skip over DNPs
-    # player_schedule = state.filter_schedule(team_id)
-    # # grab info from games
-    # game_info_promises = [get_game(session, g) for g in player_schedule]
-    # game_info = await asyncio.gather(*game_info_promises)
+    # grab the player statistics for the current season and previous seasons,
+    # as requested by the lookback argument
+    curr_season = utils.get_current_season()
+    responses = await utils.await_and_gather(
+        get_player_game_stats_for_season(session, player.id, season)
+        for season in range(curr_season - args.lookback, curr_season + 1))
+    game_stats = list(itertools.chain.from_iterable(responses))
+    # TODO: need to filter out DNPs
 
     # print player name/position/team info
     log.info(player.bio())
-    # # print player stats for each game
-    # # reverse so the report is newest-to-oldest
-    # # track the number of games that have been printed and skip over DNPs
-    # ngames = 0
-    # for sched, game in reversed(list(zip(player_schedule, game_info))):
-    #     if ngames == args.n:
-    #         break
-    #     # print date/location/opponent for game
-    #     where = "v." if game.is_home_team(player.team_id) else "@ "
-    #     game_bio = "%s %s %s" % (
-    #         sched.date_str_brief(), where, game.opponent_id(player.team_id))
-    #     # get player stats for the game
-    #     stats = game.get_player_stats(player)
-    #     if stats is None:
-    #         # DNP, skip this game
-    #         continue
-    #     log.info(
-    #         "%s: %u pts (%.3f FG%% %u FGA) %u reb %u ast"
-    #         % (game_bio, stats.pts, stats.fg_pct, stats.fga, stats.trb,
-    #            stats.ast))
-    #     ngames += 1
+    # print player stats for each game
+    # reverse so the report is newest-to-oldest
+    # track the number of games that have been printed and skip over DNPs
+    ngames = 0
+    for stats in reversed(game_stats):
+        if ngames == args.n:
+            break
+        player_is_home = player.team.id == stats.game.home_team_id
+        # TODO: skip if this is a DNP
+        # print date/location/opponent for game
+        when = stats.game.date_to_datetime().strftime("%m/%d")
+        where = "v." if player_is_home else "@ "
+        if player_is_home:
+            opp = state.team_id_to_abbreviation(stats.game.visitor_team_id)
+        else:
+            opp = state.team_id_to_abbreviation(stats.game.home_team_id)
+        game_bio = "%s %s %s" % (when, where, opp)
+        # print player statistics for the game
+        # TODO: print more stats
+        log.info(
+            "%s: %u pts %u reb %u ast"
+            % (game_bio, stats.pts, stats.reb, stats.ast))
+        ngames += 1
 
 
 async def run(args, session):
-    # load any stored NBA player info
+    # load stored NBA player info
     state.set_players(load_players())
+    # load NBA teams info
+    state.set_teams(await get_teams(session))
 
     if args.command == "avg":
         await player_season_averages(args, session)

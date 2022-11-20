@@ -21,8 +21,8 @@ class NBAState:
     Global store for NBA information and statistics.
     """
     players = []
-    # used to avoid duplication of player objects
-    player_ids = set()
+    player_ids = set()  # used to avoid duplication of player objects
+    teams = []
 
     def set_players(self, nba_players):
         self.players = nba_players
@@ -37,6 +37,9 @@ class NBAState:
     def add_players(self, player_list):
         for player in player_list:
             self.add_player(player)
+
+    def set_teams(self, nba_teams):
+        self.teams = nba_teams
 
     def filter_players(self, names):
         """
@@ -65,3 +68,17 @@ class NBAState:
             p for p in self.players
             if combinator(
                 p.first_name.upper() == first, p.last_name.upper() == last)]
+
+    def team_id_to_abbreviation(self, team_id):
+        """
+        Finds the team associated with the given team ID and returns the team
+        abbreviation.
+
+        Arguments:
+            team_id : Team ID
+
+        Returns:
+            team abbreviation string
+        """
+        matches = [team for team in self.teams if team.id == team_id]
+        return matches[0].abbreviation if matches else ""
