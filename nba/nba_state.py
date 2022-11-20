@@ -57,7 +57,7 @@ class NBAState:
 
         if len(names) > 1:
             first = names[0].upper()
-            last = names[1].upper()
+            last = " ".join(names[1:]).upper()
             combinator = operator.__and__
         else:
             first = names[0].upper()
