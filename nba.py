@@ -97,6 +97,27 @@ async def get_teams(session):
     return teams
 
 
+def get_team(key):
+    team = None
+    log.debug("searching for team: %s" % key)
+    # search for the team in the state
+    matches = state.filter_teams(key)
+    # check if the team was not found
+    if not matches:
+        log.error("failed to find team \"%s\"" % key)
+    # check if there are too many matches
+    elif len(matches) > 1:
+        log.error("multiple team matches for \"%s\"" % " ".join(key))
+        match_names = [
+            "%s (%s)" % (team.full_name, team.abbreviation)
+            for team in matches]
+        log.info("select one of the following:\n%s" % "\n".join(match_names))
+    # otherwise we found a single matching team
+    else:
+        team = matches[0]
+    return team
+
+
 async def get_player_game_stats_for_season(session, player_id, season):
     stats_json = []
     path = LOCAL_STORAGE / ("player_%s_games_%s.json" % (player_id, season))
@@ -175,6 +196,12 @@ async def player_game_log(args, session):
     player = await get_player(args, session)
     if player is None:
         return
+    # search for the given opponent, if provided
+    opponent = None
+    if args.opponent is not None:
+        opponent = get_team(args.opponent)
+        if opponent is None:
+            return
 
     # grab the player statistics for the current season and previous seasons,
     # as requested by the lookback argument
@@ -191,20 +218,25 @@ async def player_game_log(args, session):
     # track the number of games that have been printed and skip over DNPs
     ngames = 0
     for stats in reversed(game_stats):
-        if ngames == args.n:
+        if ngames >= args.ngames:
             break
         # skip the game if it is a DNP
         if stats.is_dnp():
             continue
+        # check which team is the player team and which is the opponent
         player_is_home = player.team.id == stats.game.home_team_id
-        # print date/location/opponent for game
-        when = stats.game.date_to_datetime().strftime("%m/%d")
-        where = "v." if player_is_home else "@ "
         if player_is_home:
-            opp = state.team_id_to_abbreviation(stats.game.visitor_team_id)
+            opponent_id = stats.game.visitor_team_id
         else:
-            opp = state.team_id_to_abbreviation(stats.game.home_team_id)
-        game_bio = "%s %s %s" % (when, where, opp)
+            opponent_id = stats.game.home_team_id
+        # if the opponent was specified, skip games that do not involve them
+        if opponent is not None and opponent.id != opponent_id:
+            continue
+        # print date/location/opponent for game
+        when = stats.game.date_to_datetime().strftime("%m/%d/%Y")
+        where = "v." if player_is_home else "@ "
+        who = state.team_id_to_abbreviation(opponent_id)
+        game_bio = "%s %s %s" % (when, where, who)
         # print player statistics for the game
         # TODO: print more stats
         log.info(

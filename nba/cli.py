@@ -38,15 +38,6 @@ def add_subparser(subparsers, command, description=""):
     return subparser
 
 
-def validate_team_id_arg(arg):
-    """
-    Validates a team ID i.e. tricode argument.
-    """
-    if arg not in utils.TRICODE_TO_FULL_NAME.keys():
-        raise argparse.ArgumentError("invalid team \"%s\"" % arg)
-    return arg
-
-
 def parse_args(args):
     """
     Parses command-line arguments
@@ -76,13 +67,13 @@ def parse_args(args):
         "name", nargs="+",
         help="Player name, specify first/last/both as needed")
     games_subparser.add_argument(
-        "-n", metavar="GAMES", type=int, default=5,
+        "-n", dest="ngames", metavar="GAMES", type=int, default=5,
         help="Number of games")
     games_subparser.add_argument(
-        "-o", metavar="TEAM", type=validate_team_id_arg,
+        "-o", dest="opponent", metavar="TEAM",
         help="Opponent")
     games_subparser.add_argument(
-        "--lookback", metavar="SEASONS", type=int, default=1,
-        help="Grab games from previous seasons")
+        "-l", dest="lookback", metavar="SEASONS", type=int, default=1,
+        help="Lookback to grab games from previous seasons")
 
     return parser.parse_args(args)

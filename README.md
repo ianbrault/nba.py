@@ -44,11 +44,11 @@ positional arguments:
   name                Player name, specify first/last/both as needed
 
 optional arguments:
-  -h, --help          show this help message and exit
-  -d, --debug         Enable debug output.
-  -n GAMES            Number of games
-  -o TEAM             Opponent
-  --lookback SEASONS  Grab games from previous seasons
+  -h, --help   show this help message and exit
+  -d, --debug  Enable debug output.
+  -n GAMES     Number of games
+  -o TEAM      Opponent
+  -l SEASONS   Lookback to grab games from previous seasons
 ```
 
 Examples:
@@ -64,4 +64,14 @@ Lonnie Walker IV - G (LAL)
 11/02 v. NOP: 28 pts 3 reb 1 ast
 11/06 v. CLE: 6 pts 1 reb 1 ast
 10/30 v. DEN: 18 pts 5 reb 2 ast
+```
+
+```
+$ nba.py games Russell Westbrook -o BKN -l 2
+Russell Westbrook - G (LAL)
+11/13/2022 v. BKN: 14 pts 6 reb 12 ast
+01/25/2022 @  BKN: 15 pts 6 reb 4 ast
+12/25/2021 v. BKN: 13 pts 12 reb 11 ast
+03/21/2021 @  BKN: 29 pts 13 reb 13 ast
+01/03/2021 @  BKN: 24 pts 5 reb 10 ast
 ```

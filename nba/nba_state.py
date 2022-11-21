@@ -69,6 +69,21 @@ class NBAState:
             if combinator(
                 p.first_name.upper() == first, p.last_name.upper() == last)]
 
+    def filter_teams(self, key):
+        """
+        Filters the team list based on the given string.
+
+        Arguments:
+            key : String, this can be a city, a mascot, an abbreviation
+
+        Returns:
+            a list of matching Team objects
+        """
+        # match the abbreviation or anything in the full name
+        return [
+            t for t in self.teams
+            if t.abbreviation == key or key in t.full_name]
+
     def team_id_to_abbreviation(self, team_id):
         """
         Finds the team associated with the given team ID and returns the team
