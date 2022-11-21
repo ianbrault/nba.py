@@ -21,10 +21,14 @@ optional arguments:
   -d, --debug  Enable debug output.
 ```
 
-Examples:
+#### Examples:
+
+Get the season averages for Anthony Davis
 
 ```
-$ nba.py avg Anthony Davis
+nba.py avg Anthony Davis
+```
+```
 Anthony Davis - F-C (LAL)
 13 GP 34.4 MPG
 25.3 pts 11.5 reb 2.5 ast
@@ -52,10 +56,14 @@ optional arguments:
   -l SEASONS   Lookback to grab games from previous seasons
 ```
 
-Examples:
+#### Examples:
+
+Get statistics from the last 8 games for Lonnie Walker IV
 
 ```
-$ nba.py games Lonnie Walker IV -n 8
+nba.py games Lonnie Walker IV -n 8
+```
+```
 Lonnie Walker IV - G (LAL)
 11/13/2022 v.BKN  25 pts  1 reb  0 ast  9-15 FG  4-5 3PT  3-3 FT
 10/18/2022 @ GSW   5 pts  3 reb  5 ast   2-7 FG  0-3 3PT  1-2 FT
@@ -67,8 +75,13 @@ Lonnie Walker IV - G (LAL)
 10/30/2022 v.DEN  18 pts  5 reb  2 ast  6-14 FG  3-5 3PT  3-4 FT
 ```
 
+Get statistics from the last 5 games against the Brooklyn Nets for Russell
+Westbrook, over the last 2 seasons, and show only points/rebounds/assists
+
 ```
-$ nba.py games Russell Westbrook -o BKN -l 2 -b
+nba.py games Russell Westbrook -o BKN -l 2 -b
+```
+```
 Russell Westbrook - G (LAL)
 11/13/2022 v.BKN  14 pts   6 reb  12 ast
 01/25/2022 @ BKN  15 pts   6 reb   4 ast
