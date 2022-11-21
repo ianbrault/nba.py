@@ -78,3 +78,23 @@ def min_to_number(mp):
     else:
         mp = float(mp)
     return mp
+
+
+def print_table(logger, table, pad=2):
+    """
+    Prints tabular data.
+
+    Arguments:
+        logger : Logger function, needs to be passed as an argument to avoid a
+                 circular import issue
+        table  : A 2D list of rows/columns
+        pad    : Padding between each column
+    """
+    sep = " " * pad
+    ncols = max(len(row) for row in table)
+    col_sizes = [max(len(row[i]) for row in table) for i in range(ncols)]
+    for row in table:
+        cols = []
+        for col, size in zip(row, col_sizes):
+            cols.append(col.rjust(size))
+        logger(sep.join(cols))

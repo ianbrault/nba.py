@@ -13,8 +13,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from . import utils
-
 import argparse
 
 
@@ -67,13 +65,16 @@ def parse_args(args):
         "name", nargs="+",
         help="Player name, specify first/last/both as needed")
     games_subparser.add_argument(
+        "-b", dest="basic", action="store_true",
+        help="Log only a basic points/rebounds/assists slashline")
+    games_subparser.add_argument(
+        "-l", dest="lookback", metavar="SEASONS", type=int, default=1,
+        help="Lookback to grab games from previous seasons")
+    games_subparser.add_argument(
         "-n", dest="ngames", metavar="GAMES", type=int, default=5,
         help="Number of games")
     games_subparser.add_argument(
         "-o", dest="opponent", metavar="TEAM",
         help="Opponent")
-    games_subparser.add_argument(
-        "-l", dest="lookback", metavar="SEASONS", type=int, default=1,
-        help="Lookback to grab games from previous seasons")
 
     return parser.parse_args(args)

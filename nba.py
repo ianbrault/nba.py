@@ -213,6 +213,9 @@ async def player_game_log(args, session):
 
     # print player name/position/team info
     log.info(player.bio())
+
+    # print game log as tabular data
+    table = []
     # print player stats for each game
     # reverse so the report is newest-to-oldest
     # track the number of games that have been printed and skip over DNPs
@@ -232,17 +235,25 @@ async def player_game_log(args, session):
         # if the opponent was specified, skip games that do not involve them
         if opponent is not None and opponent.id != opponent_id:
             continue
+        # print as columns
+        cols = []
         # print date/location/opponent for game
         when = stats.game.date_to_datetime().strftime("%m/%d/%Y")
         where = "v." if player_is_home else "@ "
         who = state.team_id_to_abbreviation(opponent_id)
-        game_bio = "%s %s %s" % (when, where, who)
+        cols.append("%s %s%s" % (when, where, who))
         # print player statistics for the game
-        # TODO: print more stats
-        log.info(
-            "%s: %u pts %u reb %u ast"
-            % (game_bio, stats.pts, stats.reb, stats.ast))
+        cols.append("%u pts" % stats.pts)
+        cols.append("%u reb" % stats.reb)
+        cols.append("%u ast" % stats.ast)
+        # only print points/rebounds/assists if basic flag is given
+        if not args.basic:
+            cols.append("%u-%u FG" % (stats.fgm, stats.fga))
+            cols.append("%u-%u 3PT" % (stats.fg3m, stats.fg3a))
+            cols.append("%u-%u FT" % (stats.ftm, stats.fta))
+        table.append(cols)
         ngames += 1
+    utils.print_table(log.info, table)
 
 
 async def run(args, session):
