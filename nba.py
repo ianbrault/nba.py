@@ -27,6 +27,7 @@ from nba import Team
 import aiohttp
 
 import asyncio
+import collections
 import itertools
 import logging
 import os
@@ -113,6 +114,29 @@ async def get_player_game_stats_for_season(session, player_id, season):
     return stats
 
 
+async def get_player_season_averages(session, player_id):
+    # get the player game stats for the current season
+    season = utils.get_current_season()
+    season_stats = await get_player_game_stats_for_season(
+        session, player_id, season)
+    # filter out DNPs
+    season_stats = [game for game in season_stats if not game.is_dnp()]
+    # convert each object to JSON and combine averages
+    ngames = len(season_stats)
+    season_stats_json = [game.toJSON() for game in season_stats]
+    skip_keys = ["id", "fg3_pct", "fg_pct", "ft_pct", "game", "gp", "team"]
+    averages_json = collections.defaultdict(float)
+    for game in season_stats_json:
+        for key, value in game.items():
+            if key in skip_keys:
+                continue
+            averages_json[key] += value
+    averages_json = {k: v / ngames for k, v in averages_json.items()}
+    # include the additional "games played" key
+    averages_json["gp"] = ngames
+    return PlayerGameStats(**averages_json)
+
+
 async def player_season_averages(args, session):
     # search for the given player
     player = await get_player(args, session)
@@ -120,28 +144,30 @@ async def player_season_averages(args, session):
         return
 
     # grab the player season averages for the current season
-    season = utils.get_current_season()
-    # TODO: these averages include DNPs, need to derive the averages ourselves
-    averages = await api.get_player_season_averages(session, player.id, season)
+    averages = await get_player_season_averages(session, player.id)
     if not averages:
         return
+    # derive shooting percentages manually
+    fg_pct = averages.fgm / averages.fga
+    fg3_pct = averages.fg3m / averages.fg3a
+    ft_pct = averages.ftm / averages.fta
 
     # print player name/position/team info
     log.info(player.bio())
     # print player season averages
-    log.info("%s GP %s MPG" % (averages["games_played"], averages["min"]))
+    log.info("%s GP %0.1f MPG" % (averages.gp, averages.min))
     log.info(
         "%.1f pts %.1f reb %.1f ast"
-        % (averages["pts"], averages["reb"], averages["ast"]))
+        % (averages.pts, averages.reb, averages.ast))
     log.info(
         "%.3f FG%% (%.1f FG / %.1f FGA)"
-        % (averages["fg_pct"], averages["fgm"], averages["fga"]))
+        % (fg_pct, averages.fgm, averages.fga))
     log.info(
         "%.3f 3PT%% (%.1f 3PT / %.1f 3PTA)"
-        % (averages["fg3_pct"], averages["fg3m"], averages["fg3a"]))
+        % (fg3_pct, averages.fg3m, averages.fg3a))
     log.info(
         "%.3f FT%% (%.1f FT / %.1f FTA)"
-        % (averages["ft_pct"], averages["ftm"], averages["fta"]))
+        % (ft_pct, averages.ftm, averages.fta))
 
 
 async def player_game_log(args, session):
@@ -157,7 +183,6 @@ async def player_game_log(args, session):
         get_player_game_stats_for_season(session, player.id, season)
         for season in range(curr_season - args.lookback, curr_season + 1))
     game_stats = list(itertools.chain.from_iterable(responses))
-    # TODO: need to filter out DNPs
 
     # print player name/position/team info
     log.info(player.bio())
@@ -168,8 +193,10 @@ async def player_game_log(args, session):
     for stats in reversed(game_stats):
         if ngames == args.n:
             break
+        # skip the game if it is a DNP
+        if stats.is_dnp():
+            continue
         player_is_home = player.team.id == stats.game.home_team_id
-        # TODO: skip if this is a DNP
         # print date/location/opponent for game
         when = stats.game.date_to_datetime().strftime("%m/%d")
         where = "v." if player_is_home else "@ "

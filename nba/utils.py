@@ -57,3 +57,24 @@ def get_current_season():
     if now.month <= 4:
         year -= 1
     return year
+
+
+def min_to_number(mp):
+    """
+    Converts the given minutes played stat from clock format to a number.
+
+    Arguments:
+        mp : Minutes played in clock time i.e. 12:34
+
+    Returns:
+        the minutes played as a floating-point number
+    """
+    if not mp:
+        mp = 0.0
+    elif isinstance(mp, str) and ":" in mp:
+        sec = int(mp.split(":")[0])
+        subsec = int(mp.split(":")[1])
+        mp = sec + (subsec / 60)
+    else:
+        mp = float(mp)
+    return mp

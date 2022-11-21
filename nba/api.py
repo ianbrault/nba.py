@@ -142,24 +142,6 @@ async def get_all_teams(session):
     return await get_paginated(session, url)
 
 
-async def get_player_season_averages(session, player_id, season):
-    """
-    Retrieves season averages for the given NBA player.
-
-    Arguments:
-        session   : aiohttp.ClientSession object
-        player_id : Player ID
-        season    : NBA season
-
-    Returns:
-        the player averages as a JSON object
-    """
-    url = "/api/v1/season_averages"
-    args = {"season": season, "player_ids": [player_id]}
-    rsp = await get_json(session, url, **args, data=True)
-    return rsp[0] if rsp else None
-
-
 async def get_player_game_stats(session, player_id, seasons):
     """
     Retrieves game statistics for the given NBA player from the provided NBA

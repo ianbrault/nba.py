@@ -16,6 +16,8 @@
 from .game import Game
 from .team import Team
 
+from .. import utils
+
 
 class PlayerGameStats:
     """
@@ -26,8 +28,8 @@ class PlayerGameStats:
         self,
         id=None, ast=None, blk=None, dreb=None, fg3_pct=None, fg3a=None,
         fg3m=None, fg_pct=None, fga=None, fgm=None, ft_pct=None, fta=None,
-        ftm=None, game=None, min=None, oreb=None, pf=None, pts=None, reb=None,
-        stl=None, team=None, turnover=None,
+        ftm=None, game=None, gp=None, min=None, oreb=None, pf=None, pts=None,
+        reb=None, stl=None, team=None, turnover=None,
         **kwargs,
     ):
         self.id = id
@@ -43,14 +45,15 @@ class PlayerGameStats:
         self.ft_pct = ft_pct
         self.fta = fta
         self.ftm = ftm
-        self.game = Game(**game)
-        self.min = min
+        self.game = Game(**game) if game else None
+        self.gp = gp
+        self.min = utils.min_to_number(min)
         self.oreb = oreb
         self.pf = pf
         self.pts = pts
         self.reb = reb
         self.stl = stl
-        self.team = Team(**team)
+        self.team = Team(**team) if team else None
         self.turnover = turnover
 
     def toJSON(self):
@@ -58,3 +61,6 @@ class PlayerGameStats:
         obj["game"] = self.game.toJSON()
         obj["team"] = self.team.toJSON()
         return obj
+
+    def is_dnp(self):
+        return self.min == 0
