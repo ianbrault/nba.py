@@ -18,6 +18,8 @@ from .team import Team
 
 from .. import utils
 
+import collections
+
 
 class PlayerGameStats:
     """
@@ -64,3 +66,34 @@ class PlayerGameStats:
 
     def is_dnp(self):
         return self.min == 0
+
+    @staticmethod
+    def average(stats_list, filter_dnp=False):
+        """
+        Derive an average of the list of given statistics.
+
+        Arguments:
+            stats_list : List of PlayerGameStats objects to average
+            filter_dnp : Filter out games that are classified as DNPs
+
+        Returns:
+            a PlayerGameStats object containing the averages
+        """
+        # filter out DNPs, if requested
+        if filter_dnp:
+            stats_list = [game for game in stats_list if not game.is_dnp()]
+        # convert each object to JSON
+        ngames = len(stats_list)
+        stats_json = [game.toJSON() for game in stats_list]
+        # combine averages
+        skip_keys = ["id", "fg3_pct", "fg_pct", "ft_pct", "game", "gp", "team"]
+        averages_json = collections.defaultdict(float)
+        for game in stats_json:
+            for key, value in game.items():
+                if key in skip_keys:
+                    continue
+                averages_json[key] += value
+        averages_json = {k: v / ngames for k, v in averages_json.items()}
+        # include the additional "games played" key
+        averages_json["gp"] = ngames
+        return PlayerGameStats(**averages_json)

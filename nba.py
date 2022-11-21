@@ -140,22 +140,8 @@ async def get_player_season_averages(session, player_id):
     season = utils.get_current_season()
     season_stats = await get_player_game_stats_for_season(
         session, player_id, season)
-    # filter out DNPs
-    season_stats = [game for game in season_stats if not game.is_dnp()]
-    # convert each object to JSON and combine averages
-    ngames = len(season_stats)
-    season_stats_json = [game.toJSON() for game in season_stats]
-    skip_keys = ["id", "fg3_pct", "fg_pct", "ft_pct", "game", "gp", "team"]
-    averages_json = collections.defaultdict(float)
-    for game in season_stats_json:
-        for key, value in game.items():
-            if key in skip_keys:
-                continue
-            averages_json[key] += value
-    averages_json = {k: v / ngames for k, v in averages_json.items()}
-    # include the additional "games played" key
-    averages_json["gp"] = ngames
-    return PlayerGameStats(**averages_json)
+    # combine the averages and filter out DNPs
+    return PlayerGameStats.average(season_stats, filter_dnp=True)
 
 
 async def player_season_averages(args, session):
@@ -169,9 +155,9 @@ async def player_season_averages(args, session):
     if not averages:
         return
     # derive shooting percentages manually
-    fg_pct = averages.fgm / averages.fga
-    fg3_pct = averages.fg3m / averages.fg3a
-    ft_pct = averages.ftm / averages.fta
+    fg_pct = (averages.fgm / averages.fga) * 100
+    fg3_pct = (averages.fg3m / averages.fg3a) * 100
+    ft_pct = (averages.ftm / averages.fta) * 100
 
     # print player name/position/team info
     log.info(player.bio())
@@ -181,13 +167,13 @@ async def player_season_averages(args, session):
         "%.1f pts %.1f reb %.1f ast"
         % (averages.pts, averages.reb, averages.ast))
     log.info(
-        "%.3f FG%% (%.1f FG / %.1f FGA)"
+        "%.1f%% FG (%.1f FGM / %.1f FGA)"
         % (fg_pct, averages.fgm, averages.fga))
     log.info(
-        "%.3f 3PT%% (%.1f 3PT / %.1f 3PTA)"
+        "%.1f%% 3PT (%.1f 3PTM / %.1f 3PTA)"
         % (fg3_pct, averages.fg3m, averages.fg3a))
     log.info(
-        "%.3f FT%% (%.1f FT / %.1f FTA)"
+        "%.1f%% FT (%.1f FT / %.1f FTA)"
         % (ft_pct, averages.ftm, averages.fta))
 
 
@@ -210,18 +196,21 @@ async def player_game_log(args, session):
         get_player_game_stats_for_season(session, player.id, season)
         for season in range(curr_season - args.lookback, curr_season + 1))
     game_stats = list(itertools.chain.from_iterable(responses))
+    # sort chronologically
+    game_stats = sorted(game_stats, key=lambda g: g.game.date_to_datetime())
 
     # print player name/position/team info
     log.info(player.bio())
 
     # print game log as tabular data
     table = []
+    # track the objects for each game so that they can be averaged and that the
+    # logging stops after the correct number of games have been logged
+    games = []
     # print player stats for each game
     # reverse so the report is newest-to-oldest
-    # track the number of games that have been printed and skip over DNPs
-    ngames = 0
     for stats in reversed(game_stats):
-        if ngames >= args.ngames:
+        if len(games) >= args.ngames:
             break
         # skip the game if it is a DNP
         if stats.is_dnp():
@@ -252,7 +241,20 @@ async def player_game_log(args, session):
             cols.append("%u-%u 3PT" % (stats.fg3m, stats.fg3a))
             cols.append("%u-%u FT" % (stats.ftm, stats.fta))
         table.append(cols)
-        ngames += 1
+        games.append(stats)
+    # derive the averages for the games and log
+    averages_row = ["AVERAGES"]
+    averages = PlayerGameStats.average(games)
+    averages_row.append("%.1f" % averages.pts)
+    averages_row.append("%.1f" % averages.reb)
+    averages_row.append("%.1f" % averages.ast)
+    # only print points/rebounds/assists if basic flag is given
+    if not args.basic:
+        averages_row.append("%.1f%%" % ((averages.fgm / averages.fga) * 100))
+        averages_row.append("%.1f%%" % ((averages.fg3m / averages.fg3a) * 100))
+        averages_row.append("%.1f%%" % ((averages.ftm / averages.fta) * 100))
+    table.append(averages_row)
+    # print the game log
     utils.print_table(log.info, table)
 
 
