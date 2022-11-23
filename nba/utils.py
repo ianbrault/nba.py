@@ -98,3 +98,19 @@ def print_table(logger, table, pad=2):
         for col, size in zip(row, col_sizes):
             cols.append(col.rjust(size))
         logger(sep.join(cols))
+
+
+def percentage(makes, attempts):
+    """
+    Calculates a percentage, handling edge cases.
+
+    Arguments:
+        makes    - Makes, divident
+        attempts - Attempts, divisor
+
+    Returns:
+        the percentage as a float
+    """
+    if attempts == 0:
+        return 0
+    return (makes / attempts) * 100.0

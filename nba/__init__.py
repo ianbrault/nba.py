@@ -22,7 +22,7 @@ from .objects.team import Team
 
 import logging
 
-__version__ = "0.3.5"
+__version__ = "0.3.6"
 
 
 # initialize global state object

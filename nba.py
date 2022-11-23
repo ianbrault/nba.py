@@ -27,7 +27,6 @@ from nba import Team
 import aiohttp
 
 import asyncio
-import collections
 import itertools
 import logging
 import os
@@ -155,9 +154,9 @@ async def player_season_averages(args, session):
     if not averages:
         return
     # derive shooting percentages manually
-    fg_pct = (averages.fgm / averages.fga) * 100
-    fg3_pct = (averages.fg3m / averages.fg3a) * 100
-    ft_pct = (averages.ftm / averages.fta) * 100
+    fg_pct = utils.percentage(averages.fgm, averages.fga)
+    fg3_pct = utils.percentage(averages.fg3m, averages.fg3a)
+    ft_pct = utils.percentage(averages.ftm, averages.fta)
 
     # print player name/position/team info
     log.info(player.bio())
@@ -242,6 +241,10 @@ async def player_game_log(args, session):
             cols.append("%u-%u FT" % (stats.ftm, stats.fta))
         table.append(cols)
         games.append(stats)
+    # before printing averages, check if there were any matching games
+    if not games:
+        log.info("no games found")
+        return
     # derive the averages for the games and log
     averages_row = ["AVERAGES"]
     averages = PlayerGameStats.average(games)
@@ -250,9 +253,12 @@ async def player_game_log(args, session):
     averages_row.append("%.1f" % averages.ast)
     # only print points/rebounds/assists if basic flag is given
     if not args.basic:
-        averages_row.append("%.1f%%" % ((averages.fgm / averages.fga) * 100))
-        averages_row.append("%.1f%%" % ((averages.fg3m / averages.fg3a) * 100))
-        averages_row.append("%.1f%%" % ((averages.ftm / averages.fta) * 100))
+        averages_row.append(
+            "%.1f%%" % utils.percentage(averages.fgm, averages.fga))
+        averages_row.append(
+            "%.1f%%" % utils.percentage(averages.fg3m, averages.fg3a))
+        averages_row.append(
+            "%.1f%%" % utils.percentage(averages.ftm, averages.fta))
     table.append(averages_row)
     # print the game log
     utils.print_table(log.info, table)
